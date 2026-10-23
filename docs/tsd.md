@@ -1,50 +1,201 @@
-# Technical & System Design (TSD) — WMS Logistics SAP Connector
+# Odoo WMS & Logistics Execution — System Specification Document (TSD)
 
-## 1. Arsitektur Sistem (Two-Tier Architecture)
+| Field              | Value                                         |
+|--------------------|-----------------------------------------------|
+| **Document ID**    | ODOO-WMS-SAP-TSD-01                           |
+| **Version**        | 1.0                                           |
+| **Status**         | Active                                        |
+| **Effective Date** | 2026-10-23                                    |
+| **Authors**        | Gilang Khrismahaq                             |
 
+**Tujuan Dokumen:**
+Dokumen ini merupakan Single Source of Truth (SSOT) yang merincikan spesifikasi teknis dan fungsional dari sistem Odoo 17 Warehouse Management System (WMS) dan Logistik Pengantaran yang terintegrasi dengan SAP Upper Line (`wms_sap_connector`). Dokumen ini menjadi rujukan utama bagi penyusunan roadmap dan pelaksanaan metode *Spec-Driven Development*.
+
+---
+
+## Bagian 1: Kebutuhan Bisnis
+
+### 1.1 Ringkasan Eksekutif
+Proyek ini mengimplementasikan pola arsitektur *Two-Tier ERP*:
+- **SAP (Upper Line / Strategic Tier):** Berperan sebagai pusat kendali keuangan, legalitas, kepatuhan audit, master data korporat, dan perencanaan pesanan pembelian/penjualan.
+- **Odoo 17 (Bottom Line / Operational Tier):** Berperan sebagai sistem eksekusi pergudangan (*Warehouse Management System*) dan logistik pengantaran fisik di lapangan.
+
+Melalui integrasi ini, pekerja lapangan (staf gudang dan supir) dapat bekerja dengan antarmuka Odoo yang lincah, mendukung barcode scanner, dan berbiaya lisensi terjangkau, sementara data transaksi fisik tetap tersinkronisasi dua arah secara *real-time* ke sistem SAP kantor pusat.
+
+### 1.2 Tujuan Bisnis
+- Mengeliminasi kebutuhan lisensi pengguna SAP yang mahal bagi operator lapangan dan supir.
+- Meningkatkan akurasi stok fisik hingga level rak (*Bin Location*) dan nomor *Batch/Lot*.
+- Mengurangi kesalahan pengiriman barang melalui proses validasi *barcode scanning* saat *picking* dan *packing*.
+- Menyediakan pelacakan pengantaran dan bukti serah terima digital (*Proof of Delivery / POD*).
+- Menghilangkan proses input manual ganda (*double-entry*) antara staf operasional dan staf akuntansi pusat melalui otomasi integrasi API.
+
+### 1.3 Ruang Lingkup
+- Sinkronisasi master data (Produk/SKU, Mitra Bisnis/Vendor/Customer, dan Lokasi Gudang/Rak).
+- Alur Inbound: Penerimaan barang pesanan pembelian (*Purchase Order*), pemeriksaan kualitas di docking, dan alokasi rak simpan (*Putaway*).
+- Manajemen Internal WMS: Pengelolaan rak lorong (*Bin*), pelacakan nomor *Lot/Batch*, dan pencatatan barang rusak (*Scrap*).
+- Alur Outbound & Logistik: Pengambilan barang dari rak (*Picking*), pengepakan (*Packing*), pencetakan Surat Jalan resmi, penugasan armada dan supir (*Dispatching*).
+- Konfirmasi Pengantaran: Pencatatan bukti terima (*Proof of Delivery*) berupa foto/tanda tangan digital.
+- Modul Integrasi & Audit: Penyediaan REST API endpoint, pengiriman webhook status transaksi, serta dashboard log sinkronisasi (`sap.sync.log`).
+
+---
+
+## Bagian 2: Spesifikasi Fungsional
+
+### 2.1 Profil Pengguna
+- **Kepala Gudang (Warehouse Manager):** Mengelola konfigurasi tata letak gudang (*layout* lorong & rak), memantau ketersediaan stok fisik, dan mengawasi log integrasi SAP.
+- **Staf Gudang (Picker / Packer):** Memindai barcode barang datang, menempatkan barang di rak (*Putaway*), dan mengambil barang pesanan (*Picking & Packing*).
+- **Staf Logistik (Dispatcher):** Mengatur penugasan armada truk, menetapkan supir, dan mencetak dokumen Surat Jalan resmi.
+- **Supir / Kurir (Driver):** Mengantarkan barang ke lokasi pelanggan dan mengunggah bukti tanda tangan/foto penerima (*Proof of Delivery*).
+- **SAP Integration Service (System User):** Akun otomatis yang mengirimkan data transaksi (PO, Sales Delivery) dan menerima pembaruan status fisik dari Odoo.
+
+### 2.2 Alur Proses Bisnis
+
+#### 2.2.1 Sinkronisasi Master Data
+1. SAP mengirimkan data master terbaru (Material, Vendor, Customer) melalui REST API ke Odoo.
+2. Odoo memvalidasi kecocokan kode referensi SAP (`sap_material_code`, `sap_partner_code`).
+3. Sistem memperbarui atau membuat record terkait di Odoo secara otomatis tanpa mengganggu data finansial bawaan Odoo.
+
+#### 2.2.2 Alur Barang Masuk (Inbound & Putaway)
+1. SAP merilis dokumen *Purchase Order* (PO) dan mengirimkan notifikasinya ke Odoo via REST API.
+2. Odoo secara otomatis menerbitkan dokumen penerimaan (*Stock Receipt*) dengan status *Ready*.
+3. Staf gudang menyambut armada vendor di area bongkar muat (*Docking Area*), memeriksa fisik barang, dan memindai barcode.
+4. Sistem menentukan lokasi rak simpan yang optimal (*Putaway Rule*) berdasarkan kapasitas atau kategori produk.
+5. Setelah dokumen divalidasi *Done* di Odoo, sistem secara otomatis menembak sinyal webhook konfirmasi *Goods Receipt (GR)* kembali ke SAP untuk pengakuan hutang dagang.
+
+#### 2.2.3 Alur Pengantaran & Barang Keluar (Outbound & Delivery)
+1. SAP merilis instruksi pengiriman (*Delivery Request*) dari pesanan penjualan yang telah lolos verifikasi kredit.
+2. Odoo membuat dokumen pengeluaran barang (*Delivery Order*).
+3. Staf gudang melakukan proses *Picking* dengan mengambil unit dari lokasi rak yang ditentukan, kemudian mengemasnya di meja *Packing*.
+4. Staf logistik menetapkan armada truk dan supir pada dokumen pengantaran, lalu mencetak formulir Surat Jalan resmi.
+5. Supir membawa muatan dan mengantarkannya ke titik tujuan pelanggan.
+6. Saat barang diterima, pelanggan membubuhkan tanda tangan digital pada formulir penerimaan (POD).
+7. Validasi penyelesaian di Odoo memicu notifikasi webhook *Goods Issue (GI)* ke SAP untuk pemotongan nilai buku aset inventori.
+
+---
+
+## Bagian 3: Spesifikasi Teknis
+
+### 3.1 Ketergantungan Modul
+Modul custom `wms_sap_connector` dibangun di atas modul resmi Odoo 17 berikut:
+- `stock` (Manajemen inventori inti, lokasi gudang, picking operation)
+- `delivery` (Ekstensi metode pengiriman dan pelacakan kurir)
+- `base` (Kerangka ORM, model mitra/res.partner, akses sekuriti)
+
+### 3.2 Model Data
+
+#### Perluasan Model product.template & product.product
+- `sap_material_code` (Char, Index): Kode unik SKU pada sistem SAP.
+- `weight` (Float): Berat netto per unit produk (dalam satuan kg) untuk kalkulasi beban armada.
+- `volume` (Float): Dimensi kubikasi produk (dalam m³) untuk kalkulasi kapasitas ruang kargo.
+- `tracking` (Selection: 'none', 'lot', 'serial'): Penanda wajib nomor batch atau nomor seri.
+
+#### Perluasan Model res.partner
+- `sap_partner_code` (Char, Index): Nomor identitas unik Vendor atau Customer pada sistem SAP.
+- `supplier_rank` / `customer_rank` (Integer): Klasifikasi mitra sebagai pemasok barang atau pelanggan.
+
+#### Perluasan Model stock.location
+- `sap_plant_code` (Char): Kode Plant / Pabrik pada SAP yang menaungi gudang bersangkutan.
+- `sap_sloc_code` (Char): Kode Storage Location pada SAP.
+- `barcode` (Char, Index): Nilai barcode fisik yang ditempel pada plang lorong atau rak.
+
+#### Perluasan Model stock.picking
+- `sap_doc_number` (Char, Index): Nomor referensi dokumen asal di SAP (Nomor PO atau Nomor Sales Delivery).
+- `sap_sync_status` (Selection: 'draft', 'pending', 'synced', 'failed'): Status sinkronisasi ke SAP.
+- `vehicle_id` (Many2one -> `wms.vehicle`): Armada truk yang ditugaskan.
+- `driver_id` (Many2one -> `res.partner`): Supir pengantar yang bertanggung jawab.
+- `proof_of_delivery` (Binary): Berkas gambar pindaian tanda tangan atau foto bukti penerimaan fisik.
+- `pod_signed_by` (Char): Nama terang pihak penerima di lokasi tujuan.
+- `pod_timestamp` (Datetime): Waktu pencatatan bukti penyerahan barang.
+
+#### Model Baru wms.vehicle
+- `license_plate` (Char, Required): Nomor plat polisi kendaraan.
+- `driver_id` (Many2one -> `res.partner`): Supir tetap penanggung jawab armada.
+- `max_weight` (Float): Kapasitas muatan berat maksimum (kg).
+- `max_volume` (Float): Kapasitas volume kargo maksimum (m³).
+- `state` (Selection: 'available', 'on_delivery', 'maintenance'): Kondisi operasional armada.
+
+#### Model Baru sap.sync.log
+- `name` (Char): Nomor referensi transaksi sinkronisasi.
+- `sync_type` (Selection: 'master_product', 'master_partner', 'inbound_po', 'outbound_so'): Jenis data integrasi.
+- `direction` (Selection: 'inbound', 'outbound'): Arah aliran data.
+- `payload` (Text): Salinan lengkap struktur payload JSON yang dipertukarkan.
+- `status` (Selection: 'pending', 'success', 'failed'): Hasil eksekusi transaksi.
+- `error_message` (Text): Rekaman pesan kegagalan teknis jika transaksi mengalami galat.
+- `sync_date` (Datetime): Waktu pencatatan log integrasi.
+
+### 3.3 Diagram Relasi Data (ERD)
+
+```mermaid
+erDiagram
+    SAP_MATERIAL_MASTER ||--|| PRODUCT_TEMPLATE : "Sinkronisasi SKU"
+    SAP_PARTNER_MASTER ||--|| RES_PARTNER : "Sinkronisasi Rekanan"
+    SAP_PLANT_SLOC ||--|| STOCK_WAREHOUSE : "Mapping Plant SAP"
+
+    PRODUCT_TEMPLATE {
+        string sap_material_code PK "Kode SAP"
+        string default_code "SKU Odoo"
+        string barcode "Barcode Scanner"
+        string name "Nama Produk"
+        float weight "Berat Kg"
+        float volume "Volume m3"
+        string tracking "Lot/Serial"
+    }
+
+    STOCK_WAREHOUSE ||--|{ STOCK_LOCATION : "Memiliki Rak"
+    STOCK_WAREHOUSE {
+        string sap_plant_code "Plant SAP"
+        string code "Kode Gudang"
+        string name "Nama Fasilitas"
+    }
+
+    STOCK_LOCATION {
+        string sap_sloc_code "SLoc SAP"
+        string barcode "Barcode Rak"
+        string complete_name "Lorong/Rak"
+    }
+
+    STOCK_PICKING ||--|| WMS_VEHICLE : "Diantar oleh"
+    STOCK_PICKING ||--o{ STOCK_MOVE : "Memuat Item"
+    STOCK_PICKING {
+        string sap_doc_number PK "No Referensi SAP"
+        string sap_sync_status "Status Sync"
+        binary proof_of_delivery "Foto/TTD POD"
+        string pod_signed_by "Nama Penerima"
+        datetime pod_timestamp "Waktu Serah Terima"
+    }
+
+    WMS_VEHICLE {
+        string license_plate PK "Plat Nomor"
+        float max_weight "Kapasitas Kg"
+        float max_volume "Kapasitas m3"
+        string state "Status Armada"
+    }
+
+    SAP_SYNC_LOG {
+        string name "Kode Transaksi"
+        string sync_type "Tipe Integrasi"
+        string direction "Arah Data"
+        text payload "JSON Data"
+        string status "Hasil Sync"
+        text error_message "Log Galat"
+    }
 ```
-[ Upper Line : SAP ]
-  │
-  │ REST API (JSON) / Webhook
-  ▼
-[ Integration Layer : Odoo Controller ]
-  │
-  ▼
-[ Bottom Line : Odoo 17 Core Modules (stock, delivery) + Custom WMS ]
-  │
-  ▼
-[ Operator Lapangan : Barcode Scanner, Tablet, Mobile Driver ]
-```
 
-## 2. Model & Tabel Kunci
+### 3.4 Transisi Status
+- **Alur Inbound Picking:**
+  `Draft` $\rightarrow$ `Ready` (Saat PO diterima dari SAP) $\rightarrow$ `Done` (Saat fisik divalidasi dan rak dialokasikan) $\rightarrow$ *Trigger webhook Good Receipt ke SAP*.
+- **Alur Outbound Delivery:**
+  `Draft` $\rightarrow$ `Waiting` $\rightarrow$ `Assigned / In Delivery` (Saat armada & supir ditetapkan) $\rightarrow$ `Done` (Saat POD diunggah) $\rightarrow$ *Trigger webhook Goods Issue ke SAP*.
+- **Alur Sinkronisasi SAP:**
+  `Pending` $\rightarrow$ `Success` (Respons HTTP 200/201) atau `Failed` (Respons 4xx/5xx / Timeout dengan opsi retry otomatis).
 
-### 2.1 Ekstensi Model Odoo Standard
-1. **`product.template`**
-   - `sap_material_code` (Char, Index): ID unik material di SAP.
-   - `weight` & `volume` (Float): Kalkulasi kapasitas muatan armada.
-2. **`res.partner`**
-   - `sap_partner_code` (Char, Index): ID Customer atau Vendor di SAP.
-3. **`stock.location`**
-   - `sap_plant_code` (Char): Kode Plant SAP.
-   - `sap_sloc_code` (Char): Storage Location SAP.
-   - `barcode` (Char): Barcode pada rak fisik.
-4. **`stock.picking`**
-   - `sap_doc_number` (Char): Nomor referensi dokumen SAP (PO / Sales Order).
-   - `sap_sync_status` (Selection: 'draft', 'pending', 'synced', 'failed').
-   - `driver_id` (Many2one -> `res.partner` / supir).
-   - `license_plate` (Char).
-   - `proof_of_delivery` (Binary / Image tanda tangan penerima).
+### 3.5 Protokol Integrasi & Kontrak API
+- **Standar Protokol:** RESTful API dengan format serialisasi data JSON melalui jalur HTTPS terenkripsi.
+- **Autentikasi:** API Key berbasis Header (`X-Odoo-API-Key`) atau Basic Authentication terenkripsi.
+- **Idempotency Guarantee:** Parameter `sap_doc_number` dan `sap_material_code` diperlakukan sebagai kunci rekonsiliasi unik untuk mencegah timbulnya rekaman duplikat pada skenario pengiriman ulang (*retry*).
 
-### 2.2 Model Baru (Custom)
-1. **`sap.sync.log`**
-   - `sync_type`: Master / Inbound / Outbound
-   - `direction`: IN / OUT
-   - `payload`: Text JSON
-   - `status`: success / failed / pending
-   - `error_message`: Text
-
-## 3. Protokol & Kontrak API
-
-- Format Payload: JSON
-- Autentikasi: Token-based / Odoo API Key
-- Idempotency: Menggunakan `sap_doc_number` dan `sap_material_code` sebagai kunci unik agar data tidak duplikat jika terjadi pengiriman ulang (*retry*).
+### 3.6 Hak Akses & Keamanan
+- **Warehouse Operator:** Hak baca dan ubah terbatas pada pemindaian barcode, dokumen picking, dan alokasi rak.
+- **Logistics Dispatcher:** Hak kelola armada kendaraan, penugasan supir, pencetakan Surat Jalan, dan verifikasi POD.
+- **Warehouse Manager:** Akses administratif menyeluruh, konfigurasi master data gudang, serta penanganan log galat pada antarmuka `sap.sync.log`.
+- **Public / External API:** Dibatasi hanya untuk *endpoint* kontroler integrasi resmi dengan pembatasan hak tulis langsung ke tabel sensitif.
