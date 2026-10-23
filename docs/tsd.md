@@ -123,6 +123,11 @@ Modul custom `wms_sap_connector` dibangun di atas modul resmi Odoo 17 berikut:
 - `status` (Selection: 'pending', 'success', 'failed'): Hasil eksekusi transaksi.
 - `error_message` (Text): Rekaman pesan kegagalan teknis jika transaksi mengalami galat.
 - `sync_date` (Datetime): Waktu pencatatan log integrasi.
+- `action_retry_sync()` (Method): Aksi tombol pada tampilan Form untuk mengirimkan kembali payload transaksi yang berstatus `failed`.
+
+#### Perluasan Model res.config.settings
+- `sap_base_url` (Char, config_parameter='wms_sap_connector.sap_base_url'): URL host server SAP / FastAPI simulator (misal: `http://localhost:8000`).
+- `sap_api_token` (Char, config_parameter='wms_sap_connector.sap_api_token'): Token rahasia otentikasi untuk otorisasi webhook dari Odoo ke SAP.
 
 ### 3.3 Diagram Relasi Data (ERD)
 
@@ -193,7 +198,8 @@ erDiagram
 
 ### 3.5 Protokol Integrasi & Kontrak API
 - **Standar Protokol:** RESTful API dengan format serialisasi data JSON melalui jalur HTTPS terenkripsi.
-- **Autentikasi:** API Key berbasis Header (`X-Odoo-API-Key`) atau Basic Authentication terenkripsi.
+- **Autentikasi:** API Key berbasis Header (`X-Odoo-API-Key`) atau Bearer Token terenkripsi sesuai konfigurasi `sap_api_token`.
+- **Simulator Eksternal SAP:** Menggunakan framework **FastAPI** (`mock_sap_server.py`) yang mengekspos endpoint RESTful berkinerja tinggi serta antarmuka dokumentasi Swagger UI interaktif di `http://localhost:8000/docs` untuk simulasi pertukaran data dua arah.
 - **Idempotency Guarantee:** Parameter `sap_doc_number` dan `sap_material_code` diperlakukan sebagai kunci rekonsiliasi unik untuk mencegah timbulnya rekaman duplikat pada skenario pengiriman ulang (*retry*).
 - **Penanganan Gambar Material:** Payload master material dari SAP mendukung transmisi foto produk dalam format string biner Base64 yang langsung dipetakan ke field `image_1920` Odoo.
 

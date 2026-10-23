@@ -23,13 +23,20 @@ Pembuatan struktur dasar modul custom Odoo dan pendaftaran dependensi inti siste
 | `init-wms-connector-module` | Backend | Inisialisasi direktori `wms_sap_connector`, file `__init__.py`, dan file manifest `__manifest__.py`. Deklarasikan dependensi wajib (`stock`, `delivery`) agar Odoo menarik modul tersebut secara otomatis saat instalasi. | [tsd.md](tsd.md) (Bagian 3.1) |
 
 ### 1.2 Capability: `integration-audit-log`
-Penyediaan infrastruktur pencatatan rekaman audit transaksi pertukaran data dua arah antara SAP dan Odoo.
+Penyediaan infrastruktur pencatatan rekaman audit transaksi pertukaran data dua arah antara SAP dan Odoo beserta mekanisme pengiriman ulang transaksi galat.
 
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
-| `create-sync-log-model` | Backend | Pembuatan model baru `sap.sync.log` beserta bidang data (`name`, `sync_type`, `direction`, `payload`, `status`, `error_message`, `sync_date`). | [tsd.md](tsd.md) (Bagian 3.2) |
+| `create-sync-log-model` | Backend | Pembuatan model baru `sap.sync.log` beserta bidang data (`name`, `sync_type`, `direction`, `payload`, `status`, `error_message`, `sync_date`) dan method `action_retry_sync()` untuk memicu pengiriman ulang transaksi yang berstatus `failed`. | [tsd.md](tsd.md) (Bagian 3.2) |
 | `setup-wms-security-groups` | Security | Konfigurasi `security/ir.model.access.csv` dan `security/security.xml` untuk peran Pengguna Gudang, Staf Logistik, dan Manajer Gudang. | [tsd.md](tsd.md) (Bagian 3.6) |
-| `ui-backend-sync-log-views` | UI | Pembuatan tampilan Tree dan Form untuk model `sap.sync.log`, serta penyematan menu navigasi "SAP Integration Logs" di bawah modul Inventory. | [tsd.md](tsd.md) (Bagian 3.2) |
+| `ui-backend-sync-log-views` | UI | Pembuatan tampilan Tree dan Form untuk model `sap.sync.log` lengkap dengan tombol aksi "Retry Sync" pada record gagal, serta penyematan menu navigasi "SAP Integration Logs" di bawah modul Inventory. | [tsd.md](tsd.md) (Bagian 3.2) |
+
+### 1.3 Capability: `sap-connector-settings`
+Penyediaan antarmuka konfigurasi terpusat pada menu Settings Odoo untuk menyimpan endpoint host dan token otorisasi SAP.
+
+| Nama Change | Domain | Deskripsi | Referensi SSOT |
+|---|---|---|---|
+| `setup-sap-connector-settings` | Backend | Perluasan model `res.config.settings` dengan penambahan bidang konfigurasi `sap_base_url` dan `sap_api_token`, serta memproyeksikannya ke panel pengaturan Settings Inventory. | [tsd.md](tsd.md) (Bagian 3.2) |
 
 ---
 
@@ -109,5 +116,5 @@ Penyediaan server tiruan untuk mereplikasi perilaku SAP dalam lingkungan pengemb
 
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
-| `setup-mock-sap-service` | Integrasi | Pembuatan skrip Python mandiri berbasis FastAPI/Flask (`mock_sap_server.py`) yang mampu menembakkan payload PO/Delivery dan menampung webhook Odoo. | [tsd.md](tsd.md) (Bagian 1.1) |
+| `setup-mock-sap-service` | Integrasi | Pembuatan skrip Python mandiri berbasis **FastAPI** (`mock_sap_server.py`) lengkap dengan antarmuka Swagger UI interaktif (`/docs`) yang mampu menembakkan payload PO/Delivery dan menampung webhook Odoo. | [tsd.md](tsd.md) (Bagian 3.5) |
 | `e2e-integration-validation` | QA | Eksekusi skenario uji menyeluruh mulai dari sinkronisasi master data, bongkar muat inbound, alokasi rak, pengiriman armada, hingga verifikasi POD. | [tsd.md](tsd.md) (Bagian 2.2) |
