@@ -18,7 +18,7 @@ context: |
   Impl Repo : /Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector
 
   System Roles:
-  - Kepala Gudang (Warehouse Manager) : Full control over inventory, locations, and audit logs.
+  - Kepala Gudang (Warehouse Manager) : Full control over inventory, locations, layout, and audit logs.
   - Staf Gudang (Picker / Packer)     : Barcode scan, picking, packing, putaway validation.
   - Dispatcher / Logistik             : Fleet assignment, surat jalan, dispatching.
   - Supir / Kurir                     : Proof of Delivery (POD) execution.
@@ -39,93 +39,180 @@ context: |
   1. MUST follow Odoo 17 standards (ORM, XML Views, Controllers, Inheritance).
   2. MUST safely inherit standard models (stock.picking, stock.location, product.template, res.partner).
   3. Security rules MUST be defined strictly in ir.model.access.csv and security.xml.
-  4. Integration endpoints MUST be idempotent and log every payload in sap_sync_log.
+  4. Integration endpoints MUST be idempotent, authenticated, and log every payload in sap_sync_log.
+  5. Language Rule: All markdown headings MUST be in English. All body explanations MUST be in formal Indonesian.
+  6. Code Naming: Exact Odoo model names, field names, and file paths MUST be wrapped in backticks (`model.name`).
 
-  # ============================================================================
-  # ARTIFACT WORKFLOW
-  # ============================================================================
-  # Every change MUST produce 4 ordered artifacts inside its folder:
-  # openspec/changes/{change-name}/
-  #
-  # 1. proposal.md
-  # 2. specs/{capability}/spec.md
-  # 3. design.md
-  # 4. tasks.md
-  # ============================================================================
+# ==============================================================================
+# STRICT ARTIFACT RULES
+# ==============================================================================
 
 rules:
 
   proposal:
     - |
-      REQUIRED FORMAT for proposal.md:
-      All headings in English. Body content in Indonesian.
+      STRICT FORMAT for proposal.md:
+      Headings in English. Body content in Indonesian.
+
+      # Proposal: {Change Name in Title Case}
+
+      | Field              | Value                                         |
+      |--------------------|-----------------------------------------------|
+      | **Change Name**    | {kebab-case-change-name}                      |
+      | **Roadmap Phase**  | Fase {Number}: {Phase Name}                   |
+      | **Target Cap.**    | `{capability-name}`                           |
+      | **Est. Effort**    | {X} Hours                                     |
+      | **Risk Level**     | Low / Medium / High                           |
 
       ## Why
-      [Business problem or technical need]
-      > **Reference:** [Document Name](path) — Section.
+      [Penjelasan masalah bisnis atau kebutuhan teknis yang melatarbelakangi change ini]
+      > **Reference:** [tsd.md](../../docs/tsd.md) — Bagian {X.Y} dan [roadmap.md](../../docs/roadmap.md) — Fase {X.Y}.
 
       ## What Changes
-      [List of changes]
+      [Ringkasan perubahan yang akan dilakukan, dikelompokkan berdasarkan domain teknis]
+      - **Backend (ORM & Models):** [Rincian perubahan model/field]
+      - **Security & Access Rights:** [Rincian hak akses/group]
+      - **Views & UI:** [Rincian form/tree/menu]
+      - **Integration & API:** [Rincian endpoint/webhook/log jika relevan]
 
       ## Capabilities
-      ### New / Modified / Removed Capabilities
+      ### New Capabilities
+      - `{capability-name}`: [Deskripsi 1 kalimat mengenai kapabilitas baru yang ditambahkan]
 
-      ## Impact
-      - **Files created:**
-      - **Files modified:**
-      - **SSOT documents referenced:**
+      ### Modified Capabilities
+      - `{capability-name}`: [Deskripsi kapabilitas yang diubah, atau 'None']
 
-      **Estimated effort:** X hours.
+      ### Removed Capabilities
+      - `None`
+
+      ## Impact & Scope
+      - **Files to Create:**
+        - `addons/wms_sap_connector/...`
+      - **Files to Modify:**
+        - `addons/wms_sap_connector/...`
+      - **SSOT Documents Referenced:**
+        - `docs/tsd.md` (Bagian X.Y)
+        - `docs/roadmap.md` (Capability X.Y)
+      - **Estimated Effort:** {X} jam.
+      - **Complexity & Risk Analysis:** [Penjelasan singkat risiko dan cara mitigasinya].
 
   specs:
     - |
-      REQUIRED FORMAT for specs/{capability-name}/spec.md:
-      All headings in English. Body content in Indonesian.
+      STRICT FORMAT for specs/{capability-name}/spec.md:
+      Headings in English. Body content in Indonesian. Must follow OpenSpec Delta Specs format.
+
+      # Specification: {Capability Name in Title Case}
 
       ## Purpose
-      [Explanation of capability]
+      [Penjelasan terperinci mengenai fungsi kapabilitas ini bagi operasional WMS atau integrasi SAP]
 
       ## ADDED Requirements
-      ### Requirement: {Requirement Name}
-      The system MUST [clause].
-      > **Reference:** [Document Name](path)
-      
-      #### Scenario: {Scenario Name}
-      - **WHEN** [condition]
-      - **THEN** [outcome]
+      ### Requirement: [REQ-{CAP}-{01}] {Nama Requirement}
+      The system MUST {pernyataan normatif menggunakan RFC 2119 keywords: MUST / MUST NOT / SHOULD / MAY}.
+      > **Reference:** [tsd.md](../../docs/tsd.md) — Bagian {X.Y}
+
+      [Rincian atribut, field types, validasi bisnis, atau batasan sistem]
+
+      #### Scenario: {Nama Skenario Sukses / Happy Path}
+      - **GIVEN** {Kondisi awal sistem, status record, atau ketersediaan data}
+      - **WHEN** {Aksi pengguna, pemicu event, atau panggilan API}
+      - **THEN** {Kondisi akhir sistem, mutasi status, dan efek samping yang dihasilkan}
+
+      #### Scenario: {Nama Skenario Gagal / Edge Case}
+      - **GIVEN** {Kondisi sistem saat data tidak valid atau terjadi galat}
+      - **WHEN** {Aksi yang memicu kondisi galat}
+      - **THEN** {Respon penolakan sistem, rollback, atau pencatatan error log}
+
+      ## MODIFIED Requirements
+      (Cantumkan jika ada requirement yang diubah dari spek utama sebelumnya, atau 'None')
+
+      ## REMOVED Requirements
+      (Cantumkan jika ada requirement yang dihapus, atau 'None')
 
   design:
     - |
-      REQUIRED FORMAT for design.md:
-      All headings in English. Body content in Indonesian.
+      STRICT FORMAT for design.md:
+      Headings in English. Body content in Indonesian. Follows Architecture Decision Record (ADR) standard.
+
+      # Design Document: {Change Name in Title Case}
+
+      | Field              | Value                                         |
+      |--------------------|-----------------------------------------------|
+      | **Change Name**    | {kebab-case-change-name}                      |
+      | **Arch Pattern**   | Two-Tier Odoo WMS & SAP REST Connector        |
+      | **Primary Models** | `{model.name.1}`, `{model.name.2}`            |
 
       ## Context
-      [Technical and business background]
+      [Latar belakang teknis, arsitektur yang berlaku, dan batasan implementasi saat ini]
 
       ## Goals / Non-Goals
-      [List of outcomes and excluded items]
+      ### Goals
+      - [Target hasil 1 yang terukur]
+      - [Target hasil 2 yang terukur]
 
-      ## Decisions
-      ### 1. {Decision Title}
-      - **Rationale:** [Why]
-      - **Alternatives Considered:** [Other options]
+      ### Non-Goals
+      - [Hal-hal yang secara eksplisit TIDAK dikerjakan pada change ini untuk mencegah scope creep]
 
-      ## Risks / Trade-offs
-      [Risks and mitigation]
+      ## Decisions (ADR)
+      ### 1. {Judul Keputusan Arsitektur / Pola Desain}
+      - **Rationale:** [Alasan teknis memilih pendekatan ini dibanding opsi lain]
+      - **Alternatives Considered:** [Opsi alternatif lain yang sempat dipertimbangkan dan alasan ditolak]
+      - **Consequences:** [Konsekuensi, kompromi performa, atau trade-off dari keputusan ini]
+
+      ## Technical Architecture & Data Schema
+      [Rincian teknis kodingan Odoo yang akan dibuat: model inheritance, daftar field, dan tipe datanya]
+      ```python
+      # Contoh deklarasi model / field
+      ```
+
+      [Jika melibatkan API, sertakan kontrak request dan response JSON]
+
+      ## Risks & Trade-offs
+      | Risiko / Tantangan | Tingkat Keparahan | Strategi Mitigasi |
+      |---|---|---|
+      | [Deskripsi risiko] | Low / Medium / High | [Langkah pencegahan/penanganan] |
 
   tasks:
     - |
-      REQUIRED FORMAT for tasks.md:
-      All headings in English. Body content in Indonesian.
+      STRICT FORMAT for tasks.md:
+      Headings in English. Body content in Indonesian.
 
-      ## {Number}. {Phase Name}
-      - [ ] {Number}.{Sub} {Task description.}
+      # Implementation Tasks: {Change Name in Title Case}
 
-    - Every task MUST represent less than 2 hours of effort.
-    - During apply, update `- [ ]` to `- [x]` after completing each task sequentially.
+      <!-- STRICT RULES:
+      1. Every task MUST use format: - [ ] {Number}.{Sub} [{Domain}] {Action-oriented description}
+      2. Domain tag MUST be one of: [Backend], [Security], [UI], [Integration], [Test]
+      3. MUST specify target file path in backticks (`addons/...`)
+      4. Task duration MUST NOT exceed 2 hours per item.
+      5. Strictly follow phase order: Foundation/Model -> Security -> UI -> Logic/API -> Verification.
+      -->
+
+      ## 1. Data Model & Backend Foundation
+      - [ ] 1.1 [Backend] {Deskripsi implementasi model/field pada target file `addons/wms_sap_connector/...`}
+      - [ ] 1.2 [Backend] {Pendaftaran model pada `__init__.py`}
+
+      ## 2. Security & Access Control
+      - [ ] 2.1 [Security] {Konfigurasi hak akses model pada `addons/wms_sap_connector/security/ir.model.access.csv`}
+      - [ ] 2.2 [Security] {Konfigurasi security groups pada `addons/wms_sap_connector/security/security.xml` jika relevan}
+
+      ## 3. User Interface & Views
+      - [ ] 3.1 [UI] {Pembuatan view Tree/Form/Search pada `addons/wms_sap_connector/views/...`}
+      - [ ] 3.2 [UI] {Pendaftaran menu item dan action pada views}
+      - [ ] 3.3 [Backend] {Pendaftaran file XML views pada `__manifest__.py`}
+
+      ## 4. Business Logic & Integration Endpoints
+      - [ ] 4.1 [Integration] {Implementasi controller/service logic pada `addons/wms_sap_connector/...`}
+      - [ ] 4.2 [Backend] {Implementasi validasi dan error handling}
+
+      ## 5. Verification & Testing
+      - [ ] 5.1 [Test] {Upgrade modul via `make addon wms_sap_connector` dan verifikasi log bersih dari error/warning}
+      - [ ] 5.2 [Test] {Pengujian fungsional skenario Happy Path dan Edge Case sesuai spec.md}
 
 operations:
   apply:
     guidance:
-      - Implementation MUST follow tasks.md in sequential order.
-      - MUST NOT add logic not present in spec.md or design.md.
+      - Implementation MUST strictly follow tasks.md in sequential order.
+      - During implementation, update `- [ ]` to `- [x]` immediately after each task is fully verified.
+      - MUST NOT add logic, fields, or endpoints not defined in spec.md or design.md.
+      - MUST preserve all existing docstrings, comments, and Odoo coding standards.
+      - Run verification (`make addon wms_sap_connector` or automated test) before marking tasks complete.
