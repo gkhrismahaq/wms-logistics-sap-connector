@@ -1,0 +1,8 @@
+{
+  "python.analysis.extraPaths": [
+    "./.odoo_stubs"
+  ],
+  "python.autoComplete.extraPaths": [
+    "./.odoo_stubs"
+  ]
+}
