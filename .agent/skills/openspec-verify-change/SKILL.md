@@ -10,166 +10,91 @@ metadata:
   generatedBy: "1.7.0"
 ---
 
-Verify that an implementation matches the change artifacts (specs, tasks, design).
+# Verify Change
+`/openspec-verify-change [change]`
+
+## [CRITICAL SYSTEM INSTRUCTIONS: STRICT VERIFICATION REQUIRED]
+Lakukan verifikasi perubahan (verify change) dengan kepatuhan penuh (zero hallucination, zero assumption) dan ketelitian tingkat tinggi:
+1. Jadikan `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/openspec/config.yaml` sebagai aturan mutlak penulisan format dan standar Odoo 17.
+2. Gunakan semua dokumen relevan di `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/docs/tsd.md` sebagai Single Source of Truth (SSOT).
+3. Verifikasi Perlindungan Kode Eksisting (Non-Destructive Execution): Pastikan tidak ada kode fungsional eksisting yang tertimpa, terhapus, atau rusak di luar ruang lingkup perubahan.
+4. Zero Problems Verification: DILARANG KERAS meloloskan kode yang memiliki syntax error, type error, unused variables, unused imports, dead code, atau warnings.
+5. Verifikasi Kepatuhan Arsitektur: Pastikan kode modular, mematuhi Clean Architecture Odoo 17, tidak ada redundansi, dan tidak ada resource yang terabaikan.
+
+---
 
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context or active changes in `openspec/changes/`.
 
 **Steps**
 
-1. **Select the change**
+1. **Select the Change**
+   If a name is provided, use it. Otherwise auto-select or prompt from `openspec list --json`.
+   Always announce: "Verifying change: <name>".
 
-   If a name is provided, use it. Otherwise:
-   - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes and ask the user to select one
-
-   When prompting, show changes that have implementation tasks (tasks artifact exists).
-   Include the schema used for each change if available.
-   Mark changes with incomplete tasks as "(In Progress)".
-
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-verify <other>`).
-
-2. **Check status to understand the schema**
+2. **Check Status to Understand the Schema**
    ```bash
    openspec status --change "<name>" --json
    ```
-   Parse the JSON to understand:
-   - `schemaName`: The workflow being used (e.g., "spec-driven")
-   - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context
-   - Which artifacts exist for this change
 
-3. **Get planning context and load artifacts**
-
+3. **Get Planning Context and Load Artifacts**
    ```bash
    openspec instructions apply --change "<name>" --json
    ```
+   Read all artifacts from `contextFiles` (`proposal.md`, `specs/...`, `design.md`, `tasks.md`), as well as `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/docs/tsd.md` (SSOT).
 
-   This returns the change directory and `contextFiles` (artifact ID -> array of concrete file paths). Read all available artifacts from `contextFiles`.
-
-4. **Initialize verification report structure**
-
-   Create a report structure with three dimensions:
-   - **Completeness**: Track tasks and spec coverage
-   - **Correctness**: Track requirement implementation and scenario coverage
-   - **Coherence**: Track design adherence and pattern consistency
-
-   Each dimension can have CRITICAL, WARNING, or SUGGESTION issues.
+4. **Initialize Verification Report Structure**
+   Create a report structure across four core dimensions:
+   - **Completeness**: Task completion in `tasks.md` and requirement coverage.
+   - **Correctness & SSOT Adherence**: Implementation fidelity to `docs/tsd.md` and spec scenarios.
+   - **Zero Problems & Code Quality**: Syntax verification, unused imports/variables, dead code, warnings, and non-destructive execution.
+   - **Coherence & Clean Architecture**: ADR decisions adherence, clean architecture, and modularity.
 
 5. **Verify Completeness**
+   - Parse `tasks.md`: Count complete (`- [x]`) vs incomplete (`- [ ]`).
+   - If incomplete tasks exist: add CRITICAL issue.
+   - Verify requirement coverage against `specs/<capability>/spec.md`.
 
-   **Task Completion**:
-   - If `contextFiles.tasks` exists, read every file path in it
-   - Parse checkboxes: `- [ ]` (incomplete) vs `- [x]` (complete)
-   - Count complete vs total tasks
-   - If incomplete tasks exist:
-     - Add CRITICAL issue for each incomplete task
-     - Recommendation: "Complete task: <description>" or "Mark as done if already implemented"
+6. **Verify Correctness & SSOT Alignment**
+   - Check code against `docs/tsd.md` (SSOT) sections.
+   - Assess scenarios (Happy Path, Edge Case) in `spec.md` to ensure proper handling.
 
-   **Spec Coverage**:
-   - If delta specs exist in `contextFiles.specs`:
-     - Extract all requirements (marked with "### Requirement:")
-     - For each requirement:
-       - Search codebase for keywords related to the requirement
-       - Assess if implementation likely exists
-     - If requirements appear unimplemented:
-       - Add CRITICAL issue: "Requirement not found: <requirement name>"
-       - Recommendation: "Implement requirement X: <description>"
+7. **Verify Zero Problems & Non-Destructive Execution**
+   - Perform Python syntax / compilation checks on modified files (`python3 -m py_compile <path>`).
+   - Verify XML views and security files are well-formed and valid.
+   - Check for unused imports, unused variables, and dead code.
+   - Verify that existing functional code was NOT accidentally broken or overwritten.
+   - If any problems exist: add CRITICAL issue.
 
-6. **Verify Correctness**
+8. **Verify Coherence & Architecture**
+   - Adherence to decisions in `design.md` (ADR).
+   - Odoo 17 conventions: security rules defined in `ir.model.access.csv` / `security.xml`, views registered in `__manifest__.py`, logging via `sap.sync.log`.
 
-   **Requirement Implementation Mapping**:
-   - For each requirement from delta specs:
-     - Search codebase for implementation evidence
-     - If found, note file paths and line ranges
-     - Assess if implementation matches requirement intent
-     - If divergence detected:
-       - Add WARNING: "Implementation may diverge from spec: <details>"
-       - Recommendation: "Review <file>:<lines> against requirement X"
+9. **Generate Verification Report**
 
-   **Scenario Coverage**:
-   - For each scenario in delta specs (marked with "#### Scenario:"):
-     - Check if conditions are handled in code
-     - Check if tests exist covering the scenario
-     - If scenario appears uncovered:
-       - Add WARNING: "Scenario not covered: <scenario name>"
-       - Recommendation: "Add test or implementation for scenario: <description>"
+```markdown
+## Verification Report: <change-name>
 
-7. **Verify Coherence**
+### Summary
+| Dimension                    | Status             |
+|------------------------------|--------------------|
+| Completeness                 | X/Y tasks complete |
+| Correctness & SSOT           | M/N reqs covered   |
+| Zero Problems & Code Quality | Passed / Issues    |
+| Coherence & Architecture     | Clean / Issues     |
 
-   **Design Adherence**:
-   - If `contextFiles.design` exists:
-     - Extract key decisions (look for sections like "Decision:", "Approach:", "Architecture:")
-     - Verify implementation follows those decisions
-     - If contradiction detected:
-       - Add WARNING: "Design decision not followed: <decision>"
-       - Recommendation: "Update implementation or revise design.md to match reality"
-   - If no design.md: Skip design adherence check, note "No design.md to verify against"
+### Issues by Priority
+1. **CRITICAL** (Must fix before archive):
+   - Incomplete tasks
+   - Syntax/type errors, unused imports, dead code, warnings
+   - Unintended changes to existing functional code
+2. **WARNING** (Should fix):
+   - Spec/design divergences
+3. **SUGGESTION**:
+   - Minor improvements
 
-   **Code Pattern Consistency**:
-   - Review new code for consistency with project patterns
-   - Check file naming, directory structure, coding style
-   - If significant deviations found:
-     - Add SUGGESTION: "Code pattern deviation: <details>"
-     - Recommendation: "Consider following project pattern: <example>"
-
-8. **Generate Verification Report**
-
-   **Summary Scorecard**:
-   ```markdown
-   ## Verification Report: <change-name>
-
-   ### Summary
-   | Dimension    | Status           |
-   |--------------|------------------|
-   | Completeness | X/Y tasks, N reqs|
-   | Correctness  | M/N reqs covered |
-   | Coherence    | Followed/Issues  |
-   ```
-
-   **Issues by Priority**:
-
-   1. **CRITICAL** (Must fix before archive):
-      - Incomplete tasks
-      - Missing requirement implementations
-      - Each with specific, actionable recommendation
-
-   2. **WARNING** (Should fix):
-      - Spec/design divergences
-      - Missing scenario coverage
-      - Each with specific recommendation
-
-   3. **SUGGESTION** (Nice to fix):
-      - Pattern inconsistencies
-      - Minor improvements
-      - Each with specific recommendation
-
-   **Final Assessment**:
-   - If CRITICAL issues: "X critical issue(s) found. Fix before archiving."
-   - If only warnings: "No critical issues. Y warning(s) to consider. Ready for archive (with noted improvements)."
-   - If all clear: "All checks passed. Ready for archive."
-
-**Verification Heuristics**
-
-- **Completeness**: Focus on objective checklist items (checkboxes, requirements list)
-- **Correctness**: Use keyword search, file path analysis, reasonable inference - don't require perfect certainty
-- **Coherence**: Look for glaring inconsistencies, don't nitpick style
-- **False Positives**: When uncertain, prefer SUGGESTION over WARNING, WARNING over CRITICAL
-- **Actionability**: Every issue must have a specific recommendation with file/line references where applicable
-
-**Graceful Degradation**
-
-- If only tasks.md exists: verify task completion only, skip spec/design checks
-- If tasks + specs exist: verify completeness and correctness, skip design
-- If full artifacts: verify all three dimensions
-- Always note which checks were skipped and why
-
-**Output Format**
-
-Use clear markdown with:
-- Table for summary scorecard
-- Grouped lists for issues (CRITICAL/WARNING/SUGGESTION)
-- Code references in format: `file.ts:123`
-- Specific, actionable recommendations
-- No vague suggestions like "consider reviewing"
+### Final Assessment
+- If CRITICAL: "X critical issue(s) found. Fix before archiving."
+- If Clean: "All checks passed with Zero Problems. Ready for archive."
+```

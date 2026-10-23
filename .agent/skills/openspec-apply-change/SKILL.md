@@ -10,176 +10,125 @@ metadata:
   generatedBy: "1.7.0"
 ---
 
-Implement tasks from an OpenSpec change.
+# Apply Change
+`/openspec-apply-change <change>`
+
+## [CRITICAL SYSTEM INSTRUCTIONS: HIGH-QUALITY EXECUTION REQUIRED]
+Lakukan penerapan perubahan (apply change) dengan kepatuhan penuh (zero hallucination, zero assumption) dan ketelitian tingkat tinggi. Hasil akhir tidak boleh sekadar "kode tambalan". Kode wajib berstandar production-ready, mengimplementasikan arsitektur enterprise-level, mencerminkan best practice professional developer, serta bersih dari spaghetti code maupun nilai hardcoded.
+DILARANG TELEDOR! Anda WAJIB mematuhi panduan operasional berikut:
+1. Perlindungan Kode Eksisting (Non-Destructive Execution): Anda DILARANG KERAS menimpa, menghapus, atau merusak kode eksisting yang sudah berfungsi dengan benar dan tidak memiliki kesalahan, kecuali secara eksplisit diperlukan oleh ruang lingkup perubahan (change). Lakukan modifikasi dengan presisi bedah, bukan perombakan membabi buta.
+2. Jadikan `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/openspec/config.yaml` sebagai aturan mutlak penulisan format.
+3. Gunakan semua dokumen relevan di `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/docs/tsd.md` sebagai referensi mutlak (SSOT).
+4. Tinjau ulang file dan direktori proyek sebelum menulis kode untuk mencegah redundansi, mengenali ketergantungan kode yang sudah ada, dan memastikan tidak ada konteks arsitektur yang dilanggar.
+5. Zero Problems & Pre-Completion Scan: DILARANG KERAS meninggalkan problems dalam bentuk apa pun (termasuk syntax error, type error, unused variables, unused imports, dead code, atau warnings). Sebelum menyatakan task selesai, Anda WAJIB melakukan scanning dan validasi menyeluruh pada seluruh kode yang dimodifikasi untuk memastikan implementasi berjalan bersih, solid, dan tanpa sisa isu teknis.
+
+---
 
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `view`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Specify a change name (`/openspec-apply-change <change>`). If omitted, infer from conversation context or active changes in `openspec/changes/`. If ambiguous, prompt the user with active changes from `openspec list --json`.
 
 **Steps**
 
-1. **Select the change**
+1. **Select and Validate the Change**
 
    If a name is provided, use it. Otherwise:
-   - Infer from conversation context if the user mentioned a change
-   - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes and ask the user to select one
+   - Infer from conversation context if the user mentioned a change.
+   - Auto-select if only one active change exists.
+   - If ambiguous, run `openspec list --json` to get available changes and ask the user to select one.
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/opsx-apply <other>`).
+   Always announce: "Using change: <name>" and how to override (e.g., `/openspec-apply-change <other>`).
 
-2. **Check status to understand the schema**
+2. **Check Status and Prerequisites**
    ```bash
    openspec status --change "<name>" --json
    ```
-   Parse the JSON to understand:
-   - `schemaName`: The workflow being used (e.g., "spec-driven")
-   - `planningHome`, `changeRoot`, and `actionContext`: planning scope and edit constraints
-   - Which artifact contains the tasks (typically "tasks" for spec-driven, check status for others)
+   Parse JSON to verify:
+   - `isComplete`: Are planning artifacts created and ready?
+   - `schemaName`: Workflow being used (e.g., "spec-driven").
+   - `planningHome`, `changeRoot`, and `actionContext`.
+   - If artifacts are missing or blocked, prompt user to complete artifacts via `/openspec-ff-change <name>`.
 
-3. **Get apply instructions**
-
+3. **Get Apply Instructions**
    ```bash
    openspec instructions apply --change "<name>" --json
    ```
+   Parse JSON to extract:
+   - `contextFiles`: concrete paths to planning artifacts (`proposal.md`, `specs/.../spec.md`, `design.md`, `tasks.md`).
+   - `tasks`: list of implementation tasks and current completion status.
+   - `dynamicInstruction`: guidance based on state.
 
-   This returns:
-   - `contextFiles`: artifact ID -> array of concrete file paths (varies by schema - could be proposal/specs/design/tasks or spec/tests/implementation/docs)
-   - Progress (total, complete, remaining)
-   - Task list with status
-   - Dynamic instruction based on current state
-   - Optional `context`: current required project instruction input from the selected root
-   - Optional `operationGuidance`: current advisory guidance for apply
+4. **Load Planning Context, SSOT, and Technical Standards**
 
-   **Handle states:**
-   - If `state: "blocked"` (missing artifacts): show message, suggest using openspec-continue-change (if it is not installed, run `openspec status --change "<name>" --json` to see the next artifact and `openspec instructions <artifact-id> --change "<name>" --json` for how to create it)
-   - If `state: "all_done"`: congratulate, suggest archive
-   - Otherwise: proceed to implementation
+   Sebelum menulis baris kode apa pun, Anda **WAJIB** membaca dan memahami:
+   - **Context Files**: Baca seluruh file yang terdaftar di `contextFiles` (`proposal.md`, `specs/.../spec.md`, `design.md`, `tasks.md`).
+   - **SSOT**: Baca dokumen relevan di `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/docs/tsd.md` (SSOT) untuk validasi logika bisnis, skema integrasi, dan aturan model.
+   - **Project Standards**: Tinjau `/Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/openspec/config.yaml` (`Hard Technical Constraints` & `operations.apply.guidance`).
 
-   Treat `context` as a required prompt-level input. Read and consider it, and
-   apply relevant project facts, conventions, and constraints while implementing.
-   Treat `operationGuidance` as optional additive advice. Read and consider every
-   entry, and follow entries that are applicable and compatible with the built-in
-   workflow.
+5. **Display Current Progress**
 
-   Keep both fields separate from CLI-returned state, missing artifacts, tasks,
-   progress, `contextFiles`, and the built-in `instruction`. They are not
-   evidence of task completion, do not replace the built-in instruction, and do
-   not permit bypassing a blocked state. If context conflicts with the built-in
-   instruction, an explicit user choice, or a CLI-controlled value, report the
-   conflict and preserve the controlling value. If guidance is inapplicable or
-   conflicts with those controlling inputs, do not follow it and explain why.
-   These are prompt-level behavior contracts, not enforceable checks.
+   Tampilkan status awal:
+   - Change yang sedang dikerjakan.
+   - Progress: "N/M tasks complete".
+   - Task berikutnya yang akan dieksekusi.
 
-4. **Read context files**
+6. **Implement Tasks Sequentially (Strict Quality & Non-Destructive Loop)**
 
-   Read every file path listed under `contextFiles` from the apply instructions output.
-   The files depend on the schema being used:
-   - **spec-driven**: proposal, specs, design, tasks
-   - Other schemas: follow the contextFiles from CLI output
+   Eksekusi setiap task yang tertunda (`- [ ]`) pada file `tasks.md` secara berurutan (sequential order: 1.1 → 1.2 → 2.1 ...). Untuk setiap task:
 
-   Do not copy `context` or `operationGuidance` verbatim into implementation
-   files or planning artifacts unless the user separately asks for that content.
+   a. **Pre-Implementation Architectural Review (Rule 4)**:
+      - Tinjau ulang file dan direktori proyek sebelum menulis kode.
+      - Kenali ketergantungan kode yang sudah ada (models, views, security groups, utilities).
+      - Cegah redundansi: jangan membuat ulang helper, model, atau fungsi yang sudah tersedia.
+      - Pastikan tidak ada konteks arsitektur (Odoo 17 Clean Architecture) yang dilanggar.
 
-5. **Show current progress**
+   b. **Non-Destructive Surgical Implementation (Rule 1, Rule 2, Rule 3)**:
+      - **Perlindungan Kode Eksisting (Non-Destructive Execution)**: Anda DILARANG KERAS menimpa, menghapus, atau merusak kode eksisting yang sudah berfungsi dengan benar dan tidak memiliki kesalahan, kecuali secara eksplisit diperlukan oleh ruang lingkup perubahan (change). Lakukan modifikasi dengan presisi bedah, bukan perombakan membabi buta.
+      - **Production-Ready & Enterprise Quality**:
+        - Hasil akhir tidak boleh sekadar "kode tambalan". Kode wajib berstandar production-ready, mengimplementasikan arsitektur enterprise-level, mencerminkan best practice professional developer, serta bersih dari spaghetti code maupun nilai hardcoded.
+        - Terapkan standar Odoo 17 enterprise (ORM methods yang aman, `api.depends`, `api.constrains`, inheritance `_inherit`, domain filters, XML ID naming convention, logging transaksi via `sap.sync.log`).
+        - BERSIH dari nilai hardcoded: gunakan constants, konfigurasi `res.config.settings`, atau parameter model.
+        - Pertahankan seluruh docstrings, komentar, dan konvensi penamaan kode yang relevan.
 
-   Display:
-   - Schema being used
-   - Progress: "N/M tasks complete"
-   - Remaining tasks overview
-   - Dynamic instruction from CLI
+   c. **Zero Problems & Pre-Completion Scan (Rule 5)**:
+      - DILARANG KERAS meninggalkan problems dalam bentuk apa pun (termasuk syntax error, type error, unused variables, unused imports, dead code, atau warnings).
+      - Sebelum menyatakan task selesai, Anda WAJIB melakukan scanning dan validasi menyeluruh pada seluruh kode yang dimodifikasi untuk memastikan implementasi berjalan bersih, solid, dan tanpa sisa isu teknis:
+        - **Python Compilation & Syntax Check**: Jalankan pengujian sintaks Python pada file yang diubah (misalnya via `python3 -m py_compile <path>` atau linter).
+        - **XML Validation**: Pastikan file XML views / data terstruktur valid, tag tertutup rapi, dan ID record konsisten.
+        - **Code Hygiene**: Pastikan tidak ada unused imports, variable tidak terpakai, atau dead code yang tersisa.
+        - **Module / Integration Verification**: Jalankan verifikasi modul (misalnya upgrade via `make addon wms_sap_connector` atau automated test terkait) dan pastikan output bersih tanpa error atau peringatan kritis.
+      - **HANYA setelah scanning dan validasi terbukti bersih 100% tanpa sisa isu teknis**:
+        - Update status checkbox task pada file `tasks.md`: ubah `- [ ]` menjadi `- [x]`.
 
-6. **Implement tasks (loop until done or blocked)**
+   d. **Pause & Ask If**:
+      - Terjadi keambiguan kritis pada kebutuhan bisnis → minta klarifikasi kepada pengguna.
+      - Implementasi mengungkap cacat desain pada artifact sebelumnya → sarankan pembaruan artifact terlebih dahulu.
+      - Ditemukan blocker teknis di luar ruang lingkup perubahan.
 
-   For each pending task:
-   - Show which task is being worked on
-   - Make the code changes required
-   - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` → `- [x]`
-   - Continue to next task
+7. **Show Final Status Upon Completion**
 
-   **Pause if:**
-   - Task is unclear → ask for clarification
-   - Implementation reveals a design issue → suggest updating artifacts
-   - Error or blocker encountered → report and wait for guidance
-   - User interrupts
-
-7. **On completion or pause, show status**
-
-   Display:
-   - Tasks completed this session
-   - Overall progress: "N/M tasks complete"
-   - If all done: suggest archive
-   - If paused: explain why and wait for guidance
+   Setelah seluruh task selesai:
+   - Tampilkan daftar task yang berhasil diselesaikan (`- [x]`).
+   - Laporkan hasil Pre-Completion Scan yang membuktikan implementasi bersih (0 problems, 0 syntax/type errors, 0 unused imports, clean architecture).
+   - Sarankan verifikasi akhir atau pengarsipan change via `/openspec-verify-change` atau `/openspec-archive-change`.
 
 **Output During Implementation**
 
-```
+```markdown
 ## Implementing: <change-name> (schema: <schema-name>)
 
-Working on task 3/7: <task description>
-[...implementation happening...]
-✓ Task complete
+Working on task 1.1: [Backend] {Deskripsi task}
+- Pre-implementation review: checked existing models & architecture
+- Applying surgical non-destructive changes...
+- Pre-completion scan: Python syntax verified, zero unused imports/variables, zero problems
+✓ Task 1.1 complete: `- [x]` updated
 
-Working on task 4/7: <task description>
-[...implementation happening...]
-✓ Task complete
-```
-
-**Output On Completion**
-
-```
-## Implementation Complete
-
-**Change:** <change-name>
-**Schema:** <schema-name>
-**Progress:** 7/7 tasks complete ✓
-
-### Completed This Session
-- [x] Task 1
-- [x] Task 2
-...
-
-All tasks complete! Ready to archive this change.
-```
-
-**Output On Pause (Issue Encountered)**
-
-```
-## Implementation Paused
-
-**Change:** <change-name>
-**Schema:** <schema-name>
-**Progress:** 4/7 tasks complete
-
-### Issue Encountered
-<description of the issue>
-
-**Options:**
-1. <option 1>
-2. <option 2>
-3. Other approach
-
-What would you like to do?
+Working on task 1.2: ...
 ```
 
 **Guardrails**
-- Keep going through tasks until done or blocked
-- Always read context files before starting (from the apply instructions output)
-- If task is ambiguous, pause and ask before implementing
-- If implementation reveals issues, pause and suggest artifact updates
-- Keep code changes minimal and scoped to each task
-- Update task checkbox immediately after completing each task
-- Pause on errors, blockers, or unclear requirements - don't guess
-- Use contextFiles from CLI output, don't assume specific file names
-- Do not use context or operation guidance as proof that a task is complete
-- Apply relevant project context; report conflicts with controlling workflow inputs
-- Consider every guidance entry; explain any inapplicable or conflicting advice
-- Do not copy runtime context or operation guidance into implementation files or planning artifacts
-- Preserve CLI-controlled blocked/ready/all-done behavior and completion criteria
-
-**Fluid Workflow Integration**
-
-This skill supports the "actions on a change" model:
-
-- **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
-- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly
+- **Non-Destructive Execution**: Jangan pernah merusak kode eksisting yang berfungsi normal.
+- **Enterprise Standards**: Tidak ada tambalan, tidak ada spaghetti code, tidak ada nilai hardcoded.
+- **Strict Format & SSOT**: Selalu jadikan `config.yaml` sebagai acuan format dan `docs/tsd.md` sebagai referensi mutlak.
+- **Zero Problems Policy**: Wajib lulus scanning menyeluruh sebelum mencentang task selesai.
+- **Sequential Task Execution**: Kerjakan task secara berurutan sesuai fase di `tasks.md`.
