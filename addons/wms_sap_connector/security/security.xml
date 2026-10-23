@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Kategori Modul WMS Logistics -->
+        <record id="module_category_wms_logistics" model="ir.module.category">
+            <field name="name">WMS Logistics</field>
+            <field name="description">Manajemen Hak Akses WMS &amp; Integrasi SAP</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- Grup: Warehouse Operator / Staf Gudang -->
+        <record id="group_wms_operator" model="res.groups">
+            <field name="name">Warehouse Operator</field>
+            <field name="category_id" ref="module_category_wms_logistics" />
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />
+            <field name="comment">Akses operasional pemindaian barcode, dokumen picking, dan alokasi
+                rak.</field>
+        </record>
+
+        <!-- Grup: Logistics Dispatcher / Staf Logistik -->
+        <record id="group_wms_dispatcher" model="res.groups">
+            <field name="name">Logistics Dispatcher</field>
+            <field name="category_id" ref="module_category_wms_logistics" />
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />
+            <field name="comment">Akses pengelolaan armada, penugasan supir, cetak surat jalan, dan
+                POD.</field>
+        </record>
+
+        <!-- Grup: Warehouse Manager / Kepala Gudang -->
+        <record id="group_wms_manager" model="res.groups">
+            <field name="name">Warehouse Manager</field>
+            <field name="category_id" ref="module_category_wms_logistics" />
+            <field name="implied_ids"
+                eval="[(4, ref('group_wms_operator')), (4, ref('group_wms_dispatcher'))]" />
+            <field name="comment">Akses administratif menyeluruh gudang dan penanganan log galat
+                integrasi SAP.</field>
+        </record>
+    </data>
+</odoo>

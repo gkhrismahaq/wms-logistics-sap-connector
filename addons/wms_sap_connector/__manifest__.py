@@ -12,7 +12,10 @@
         "stock",
         "delivery",
     ],
-    "data": [],
+    "data": [
+        "security/security.xml",
+        "security/ir.model.access.csv",
+    ],
     "installable": True,
     "application": True,
     "auto_install": False,
