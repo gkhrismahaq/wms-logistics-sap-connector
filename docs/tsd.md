@@ -1,4 +1,4 @@
-# Odoo WMS & Logistics Execution — System Specification Document (TSD)
+# System Specification Document (TSD) - Odoo WMS & Logistics Execution
 
 | Field              | Value                                         |
 |--------------------|-----------------------------------------------|
@@ -53,7 +53,7 @@ Melalui integrasi ini, pekerja lapangan (staf gudang dan supir) dapat bekerja de
 #### 2.2.1 Sinkronisasi Master Data
 1. SAP mengirimkan data master terbaru (Material, Vendor, Customer) melalui REST API ke Odoo.
 2. Odoo memvalidasi kecocokan kode referensi SAP (`sap_material_code`, `sap_partner_code`).
-3. Sistem memperbarui atau membuat record terkait di Odoo secara otomatis tanpa mengganggu data finansial bawaan Odoo.
+3. Sistem memperbarui atau membuat record terkait di Odoo secara otomatis tanpa mengganggu data finansial bawaan Odoo, termasuk memetakan gambar visual produk (Base64) ke field bawaan Odoo.
 
 #### 2.2.2 Alur Barang Masuk (Inbound & Putaway)
 1. SAP merilis dokumen *Purchase Order* (PO) dan mengirimkan notifikasinya ke Odoo via REST API.
@@ -65,7 +65,7 @@ Melalui integrasi ini, pekerja lapangan (staf gudang dan supir) dapat bekerja de
 #### 2.2.3 Alur Pengantaran & Barang Keluar (Outbound & Delivery)
 1. SAP merilis instruksi pengiriman (*Delivery Request*) dari pesanan penjualan yang telah lolos verifikasi kredit.
 2. Odoo membuat dokumen pengeluaran barang (*Delivery Order*).
-3. Staf gudang melakukan proses *Picking* dengan mengambil unit dari lokasi rak yang ditentukan, kemudian mengemasnya di meja *Packing*.
+3. Staf gudang melakukan proses *Picking* dengan mengambil unit dari lokasi rak yang ditentukan, dibantu verifikasi visual foto produk pada layar scanner/tablet untuk meminimalkan salah ambil barang, kemudian mengemasnya di meja *Packing*.
 4. Staf logistik menetapkan armada truk dan supir pada dokumen pengantaran, lalu mencetak formulir Surat Jalan resmi.
 5. Supir membawa muatan dan mengantarkannya ke titik tujuan pelanggan.
 6. Saat barang diterima, pelanggan membubuhkan tanda tangan digital pada formulir penerimaan (POD).
@@ -85,6 +85,7 @@ Modul custom `wms_sap_connector` dibangun di atas modul resmi Odoo 17 berikut:
 
 #### Perluasan Model product.template & product.product
 - `sap_material_code` (Char, Index): Kode unik SKU pada sistem SAP.
+- `image_1920` (Binary, Bawaan Odoo `image.mixin`): Foto produk resolusi utama untuk verifikasi visual picker/packer di gudang dan menerima data gambar (Base64) dari SAP.
 - `weight` (Float): Berat netto per unit produk (dalam satuan kg) untuk kalkulasi beban armada.
 - `volume` (Float): Dimensi kubikasi produk (dalam m³) untuk kalkulasi kapasitas ruang kargo.
 - `tracking` (Selection: 'none', 'lot', 'serial'): Penanda wajib nomor batch atau nomor seri.
@@ -136,6 +137,7 @@ erDiagram
         string default_code "SKU Odoo"
         string barcode "Barcode Scanner"
         string name "Nama Produk"
+        binary image_1920 "Foto Produk (Base64)"
         float weight "Berat Kg"
         float volume "Volume m3"
         string tracking "Lot/Serial"
@@ -193,6 +195,7 @@ erDiagram
 - **Standar Protokol:** RESTful API dengan format serialisasi data JSON melalui jalur HTTPS terenkripsi.
 - **Autentikasi:** API Key berbasis Header (`X-Odoo-API-Key`) atau Basic Authentication terenkripsi.
 - **Idempotency Guarantee:** Parameter `sap_doc_number` dan `sap_material_code` diperlakukan sebagai kunci rekonsiliasi unik untuk mencegah timbulnya rekaman duplikat pada skenario pengiriman ulang (*retry*).
+- **Penanganan Gambar Material:** Payload master material dari SAP mendukung transmisi foto produk dalam format string biner Base64 yang langsung dipetakan ke field `image_1920` Odoo.
 
 ### 3.6 Hak Akses & Keamanan
 - **Warehouse Operator:** Hak baca dan ubah terbatas pada pemindaian barcode, dokumen picking, dan alokasi rak.

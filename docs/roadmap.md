@@ -1,8 +1,8 @@
-# Odoo WMS & Logistics Execution — OpenSpec Changes Plan
+# Odoo WMS & Logistics Execution
 
 | Field              | Value                                         |
 |--------------------|-----------------------------------------------|
-| **Document ID**    | ODOO-WMS-SAP-OPENSPEC-01                      |
+| **Document ID**    | ODOO-WMS-SAP-01                               |
 | **Version**        | 1.0                                           |
 | **Status**         | Active                                        |
 | **Effective Date** | 2026-10-23                                    |
@@ -40,7 +40,7 @@ Perluasan model data standar Odoo untuk menampung atribut kode referensi SAP dan
 
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
-| `extend-product-material-model` | Backend | Modifikasi model `product.template` dengan penambahan bidang `sap_material_code`, `weight`, dan `volume`, serta memproyeksikannya ke tampilan Form Produk. | [tsd.md](tsd.md) (Bagian 3.2) |
+| `extend-product-material-model` | Backend | Modifikasi model `product.template` dengan penambahan bidang `sap_material_code`, `weight`, dan `volume`, serta memproyeksikannya bersama widget gambar produk bawaan (`image_1920`) ke tampilan Form Produk untuk verifikasi visual staf gudang. | [tsd.md](tsd.md) (Bagian 3.2) |
 | `extend-partner-customer-vendor` | Backend | Modifikasi model `res.partner` dengan penambahan bidang `sap_partner_code` untuk identifikasi unik entitas Vendor dan Customer dari SAP. | [tsd.md](tsd.md) (Bagian 3.2) |
 | `extend-warehouse-location-model` | Backend | Modifikasi model `stock.location` dengan penambahan bidang `sap_plant_code`, `sap_sloc_code`, dan `barcode` lokasi rak fisik. | [tsd.md](tsd.md) (Bagian 3.2) |
 
@@ -49,7 +49,7 @@ Penyediaan antarmuka REST API untuk menerima instruksi sinkronisasi data master 
 
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
-| `api-receive-sap-master-data` | Integrasi | Pembuatan Odoo Controller `/api/sap/master` bertipe JSON untuk menerima pembaruan data Material, Partner, dan Plant, lengkap dengan pencatatan otomatis ke `sap.sync.log`. | [tsd.md](tsd.md) (Bagian 3.5) |
+| `api-receive-sap-master-data` | Integrasi | Pembuatan Odoo Controller `/api/sap/master` bertipe JSON untuk menerima pembaruan data Material (termasuk konversi string gambar Base64 ke `image_1920`), Partner, dan Plant, lengkap dengan pencatatan otomatis ke `sap.sync.log`. | [tsd.md](tsd.md) (Bagian 3.5) |
 
 ---
 
