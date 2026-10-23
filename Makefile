@@ -11,11 +11,12 @@ help:
 	@echo "  start               - Start containers in background"
 	@echo "  stop                - Stop containers"
 	@echo "  restart             - Restart containers"
+	@echo "  wait-db             - Wait until PostgreSQL is ready to accept connections"
 	@echo "  console             - Open Odoo shell in Odoo container"
 	@echo "  psql                - Open PostgreSQL shell in DB container"
 	@echo "  logs odoo           - Tail logs for Odoo container"
 	@echo "  logs db             - Tail logs for DB container"
-	@echo "  addon <addon_name>  - Restart instance and upgrade specified addon"
+	@echo "  addon <addon_name>  - Upgrade specified addon and reload Odoo"
 
 start:
 	$(DOCKER_COMPOSE) up -d
@@ -23,8 +24,14 @@ start:
 stop:
 	$(DOCKER_COMPOSE) down
 
+wait-db:
+	@echo "Checking PostgreSQL readiness..."
+	@$(DOCKER) exec $(CONTAINER_DB) sh -c 'until pg_isready -U $(DB_USER) -d $(WEB_DB_NAME) -q; do sleep 0.5; done'
+	@echo "PostgreSQL is ready."
+
 restart:
 	$(DOCKER_COMPOSE) restart
+	@$(MAKE) wait-db
 
 console:
 	$(DOCKER) exec -it $(CONTAINER_ODOO) odoo shell --db_host=$(CONTAINER_DB) -d $(WEB_DB_NAME) -r $(DB_USER) -w $(DB_PASSWORD)
@@ -46,10 +53,19 @@ logs:
 	$(call log_target,$(word 2,$(MAKECMDGOALS)))
 
 define upgrade_addon
-	$(DOCKER) exec -it $(CONTAINER_ODOO) odoo --db_host=$(CONTAINER_DB) -d $(WEB_DB_NAME) -r $(DB_USER) -w $(DB_PASSWORD) -u $(1) --stop-after-init
+	@if [ -z "$(1)" ]; then \
+		echo "Error: Please specify addon name. Example: make addon wms_sap_connector"; \
+		exit 1; \
+	fi
+	$(DOCKER) exec -i $(CONTAINER_ODOO) odoo --db_host=$(CONTAINER_DB) -d $(WEB_DB_NAME) -r $(DB_USER) -w $(DB_PASSWORD) -u $(1) --stop-after-init
 endef
 
-addon: restart
+addon: wait-db
 	$(call upgrade_addon,$(word 2,$(MAKECMDGOALS)))
+	$(DOCKER_COMPOSE) restart odoo
 
-.PHONY: help start stop restart console psql logs odoo logs db addon
+.PHONY: help start stop restart wait-db console psql logs odoo logs db addon
+
+# Catch-all rule to prevent make from failing on arguments passed to targets like 'addon'
+%:
+	@:
