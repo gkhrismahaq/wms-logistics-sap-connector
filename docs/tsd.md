@@ -197,11 +197,108 @@ erDiagram
   `Pending` $\rightarrow$ `Success` (Respons HTTP 200/201) atau `Failed` (Respons 4xx/5xx / Timeout dengan opsi retry otomatis).
 
 ### 3.5 Protokol Integrasi & Kontrak API
+
+#### 3.5.1 Standar Protokol & Keamanan
 - **Standar Protokol:** RESTful API dengan format serialisasi data JSON melalui jalur HTTPS terenkripsi.
 - **Autentikasi:** API Key berbasis Header (`X-Odoo-API-Key`) atau Bearer Token terenkripsi sesuai konfigurasi `sap_api_token`.
 - **Simulator Eksternal SAP:** Menggunakan framework **FastAPI** (`mock_sap_server.py`) yang mengekspos endpoint RESTful berkinerja tinggi serta antarmuka dokumentasi Swagger UI interaktif di `http://localhost:8000/docs` untuk simulasi pertukaran data dua arah.
 - **Idempotency Guarantee:** Parameter `sap_doc_number` dan `sap_material_code` diperlakukan sebagai kunci rekonsiliasi unik untuk mencegah timbulnya rekaman duplikat pada skenario pengiriman ulang (*retry*).
 - **Penanganan Gambar Material:** Payload master material dari SAP mendukung transmisi foto produk dalam format string biner Base64 yang langsung dipetakan ke field `image_1920` Odoo.
+
+#### 3.5.2 Kontrak API Inbound (PO & Goods Receipt)
+1. **Push Pesanan Pembelian dari SAP/FastAPI ke Odoo:**
+   - **Endpoint:** `POST /api/sap/inbound/po`
+   - **Contoh Request Payload (JSON):**
+     ```json
+     {
+       "sap_doc_number": "PO-SAP-2026-001",
+       "vendor_code": "VEND-INDOMARCO",
+       "expected_date": "2026-10-25",
+       "items": [
+         {
+           "sap_material_code": "MAT-KOPI-01",
+           "qty": 100.0,
+           "uom": "Box"
+         }
+       ]
+     }
+     ```
+   - **Respon Odoo:**
+     ```json
+     {
+       "status": "SUCCESS",
+       "code": 201,
+       "odoo_picking_id": 14,
+       "sap_doc_number": "PO-SAP-2026-001",
+       "state": "assigned"
+     }
+     ```
+
+2. **Webhook Konfirmasi Goods Receipt (GR) dari Odoo ke SAP/FastAPI:**
+   - **Endpoint Webhook:** `POST /api/sap/goods-receipt` (pada FastAPI host)
+   - **Payload dari Odoo:**
+     ```json
+     {
+       "sap_doc_number": "PO-SAP-2026-001",
+       "status": "GOODS_RECEIVED",
+       "received_date": "2026-10-23T11:00:00Z",
+       "warehouse_code": "WH-JKT-01"
+     }
+     ```
+   - **Respon FastAPI (Simulasi Jurnal Akuntansi SAP):**
+     ```json
+     {
+       "status": "SUCCESS",
+       "code": 200,
+       "message": "Goods Receipt posted into SAP General Ledger",
+       "sap_accounting_log": {
+         "journal_entry": "JE-SAP-2026-8801",
+         "posting_date": "2026-10-23",
+         "debit_account": "101.001 - Persediaan Barang Masuk (Rp 50.000.000)",
+         "credit_account": "201.001 - Hutang Dagang Belum Difakturkan (Rp 50.000.000)",
+         "vat_in_11%": "Rp 5.500.000",
+         "financial_status": "POSTED"
+       }
+     }
+     ```
+     *Catatan:* Respon `sap_accounting_log` ini otomatis disimpan ke tabel `sap.sync.log` di Odoo untuk transparansi audit keuangan.
+
+#### 3.5.3 Kontrak API Outbound (Delivery & Goods Issue)
+1. **Push Instruksi Pengiriman dari SAP/FastAPI ke Odoo:**
+   - **Endpoint:** `POST /api/sap/outbound/delivery`
+   - **Contoh Request Payload (JSON):**
+     ```json
+     {
+       "sap_doc_number": "SO-DELIV-2026-901",
+       "customer_code": "CUST-ALFAMART-01",
+       "destination_city": "Jakarta Barat",
+       "items": [
+         {
+           "sap_material_code": "MAT-KOPI-01",
+           "qty": 50.0,
+           "uom": "Box"
+         }
+       ]
+     }
+     ```
+
+2. **Webhook Konfirmasi Goods Issue (GI) & POD dari Odoo ke SAP/FastAPI:**
+   - **Endpoint Webhook:** `POST /api/sap/goods-issue` (pada FastAPI host)
+   - **Respon FastAPI (Simulasi Jurnal Akuntansi Pemotongan HPP):**
+     ```json
+     {
+       "status": "SUCCESS",
+       "code": 200,
+       "message": "Goods Issue and POD acknowledged in SAP Financials",
+       "sap_accounting_log": {
+         "journal_entry": "JE-SAP-2026-9902",
+         "posting_date": "2026-10-23",
+         "debit_account": "501.001 - Harga Pokok Penjualan (HPP) (Rp 25.000.000)",
+         "credit_account": "101.001 - Persediaan Barang Jadi (Rp 25.000.000)",
+         "financial_status": "POSTED"
+       }
+     }
+     ```
 
 ### 3.6 Hak Akses & Keamanan
 - **Warehouse Operator:** Hak baca dan ubah terbatas pada pemindaian barcode, dokumen picking, dan alokasi rak.

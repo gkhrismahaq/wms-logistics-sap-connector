@@ -76,7 +76,7 @@ Mekanisme pengiriman sinyal konfirmasi penerimaan fisik barang kembali ke sistem
 
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
-| `webhook-notify-sap-goods-receipt` | Integrasi | Memicu transmisi webhook HTTP POST ke SAP sesaat setelah dokumen *Stock Receipt* divalidasi berstatus *Done* (*Goods Receipt Post*). | [tsd.md](tsd.md) (Bagian 3.4) |
+| `webhook-notify-sap-goods-receipt` | Integrasi | Memicu transmisi webhook HTTP POST ke SAP sesaat setelah dokumen *Stock Receipt* divalidasi berstatus *Done*, serta menangkap dan menyimpan respon simulasi jurnal akuntansi SAP (`sap_accounting_log`) ke dalam `sap.sync.log`. | [tsd.md](tsd.md) (Bagian 3.5) |
 
 ---
 
@@ -105,7 +105,7 @@ Pencatatan bukti penyerahan barang di lokasi pelanggan secara digital.
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
 | `feature-driver-proof-of-delivery` | Backend | Penambahan antarmuka unggah foto/tanda tangan digital penerima (`proof_of_delivery`, `pod_signed_by`, `pod_timestamp`) pada dokumen pengantaran. | [tsd.md](tsd.md) (Bagian 3.2) |
-| `webhook-notify-sap-goods-issue` | Integrasi | Memicu transmisi webhook notifikasi *Goods Issue (GI)* ke SAP setelah Surat Jalan divalidasi dan bukti POD terverifikasi lengkap. | [tsd.md](tsd.md) (Bagian 3.4) |
+| `webhook-notify-sap-goods-issue` | Integrasi | Memicu transmisi webhook notifikasi *Goods Issue (GI)* ke SAP setelah Surat Jalan divalidasi dan bukti POD terverifikasi lengkap, serta menyimpan respon simulasi jurnal pemotongan HPP ke `sap.sync.log`. | [tsd.md](tsd.md) (Bagian 3.5) |
 
 ---
 
@@ -116,5 +116,5 @@ Penyediaan server tiruan untuk mereplikasi perilaku SAP dalam lingkungan pengemb
 
 | Nama Change | Domain | Deskripsi | Referensi SSOT |
 |---|---|---|---|
-| `setup-mock-sap-service` | Integrasi | Pembuatan skrip Python mandiri berbasis **FastAPI** (`mock_sap_server.py`) lengkap dengan antarmuka Swagger UI interaktif (`/docs`) yang mampu menembakkan payload PO/Delivery dan menampung webhook Odoo. | [tsd.md](tsd.md) (Bagian 3.5) |
+| `setup-mock-sap-service` | Integrasi | Pembuatan skrip Python mandiri berbasis **FastAPI** (`mock_sap_server.py`) lengkap dengan antarmuka Swagger UI interaktif (`/docs`) yang mampu menembakkan payload PO/Delivery, menampung webhook Odoo, serta mengembalikan respons simulasi jurnal akuntansi keuangan SAP (`journal_entry`, debit/kredit, PPN). | [tsd.md](tsd.md) (Bagian 3.5) |
 | `e2e-integration-validation` | QA | Eksekusi skenario uji menyeluruh mulai dari sinkronisasi master data, bongkar muat inbound, alokasi rak, pengiriman armada, hingga verifikasi POD. | [tsd.md](tsd.md) (Bagian 2.2) |
