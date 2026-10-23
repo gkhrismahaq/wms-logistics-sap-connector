@@ -1,0 +1,131 @@
+schema: spec-driven
+
+# ==============================================================================
+# PROJECT CONTEXT — WMS LOGISTICS SAP CONNECTOR
+# ==============================================================================
+# This is the implementation repository for Odoo 17 WMS & Logistics Execution,
+# integrated with SAP (Upper Line) using Two-Tier ERP Architecture.
+# NO code change may begin without an approved OpenSpec proposal.
+# ==============================================================================
+
+context: |
+  Project Name  : WMS Logistics SAP Connector
+  Description   : Odoo 17 Two-Tier WMS & Logistics Execution System integrated with SAP Upper Line.
+  App Platform  : Odoo 17 (Python Backend, XML Views, PostgreSQL, REST API Connector).
+  Methodology   : Spec-Driven Development (OpenSpec).
+
+  SSOT Docs : /Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector/docs
+  Impl Repo : /Users/gilangkhrismahaq/Projects/wms-logistics-sap-connector
+
+  System Roles:
+  - Kepala Gudang (Warehouse Manager) : Full control over inventory, locations, and audit logs.
+  - Staf Gudang (Picker / Packer)     : Barcode scan, picking, packing, putaway validation.
+  - Dispatcher / Logistik             : Fleet assignment, surat jalan, dispatching.
+  - Supir / Kurir                     : Proof of Delivery (POD) execution.
+  - SAP Integration Service           : Automated inbound/outbound REST sync.
+
+  # ============================================================================
+  # SSOT DOCUMENT MAP
+  # ============================================================================
+
+  Core Blueprints (in docs/):
+  - tsd.md       : Business & Technical Specs (BRD, FSD, TSD, Integration Protocol).
+  - roadmap.md   : Master plan for all changes and capabilities.
+
+  # ============================================================================
+  # HARD TECHNICAL CONSTRAINTS
+  # ============================================================================
+
+  1. MUST follow Odoo 17 standards (ORM, XML Views, Controllers, Inheritance).
+  2. MUST safely inherit standard models (stock.picking, stock.location, product.template, res.partner).
+  3. Security rules MUST be defined strictly in ir.model.access.csv and security.xml.
+  4. Integration endpoints MUST be idempotent and log every payload in sap_sync_log.
+
+  # ============================================================================
+  # ARTIFACT WORKFLOW
+  # ============================================================================
+  # Every change MUST produce 4 ordered artifacts inside its folder:
+  # openspec/changes/{change-name}/
+  #
+  # 1. proposal.md
+  # 2. specs/{capability}/spec.md
+  # 3. design.md
+  # 4. tasks.md
+  # ============================================================================
+
+rules:
+
+  proposal:
+    - |
+      REQUIRED FORMAT for proposal.md:
+      All headings in English. Body content in Indonesian.
+
+      ## Why
+      [Business problem or technical need]
+      > **Reference:** [Document Name](path) — Section.
+
+      ## What Changes
+      [List of changes]
+
+      ## Capabilities
+      ### New / Modified / Removed Capabilities
+
+      ## Impact
+      - **Files created:**
+      - **Files modified:**
+      - **SSOT documents referenced:**
+
+      **Estimated effort:** X hours.
+
+  specs:
+    - |
+      REQUIRED FORMAT for specs/{capability-name}/spec.md:
+      All headings in English. Body content in Indonesian.
+
+      ## Purpose
+      [Explanation of capability]
+
+      ## ADDED Requirements
+      ### Requirement: {Requirement Name}
+      The system MUST [clause].
+      > **Reference:** [Document Name](path)
+      
+      #### Scenario: {Scenario Name}
+      - **WHEN** [condition]
+      - **THEN** [outcome]
+
+  design:
+    - |
+      REQUIRED FORMAT for design.md:
+      All headings in English. Body content in Indonesian.
+
+      ## Context
+      [Technical and business background]
+
+      ## Goals / Non-Goals
+      [List of outcomes and excluded items]
+
+      ## Decisions
+      ### 1. {Decision Title}
+      - **Rationale:** [Why]
+      - **Alternatives Considered:** [Other options]
+
+      ## Risks / Trade-offs
+      [Risks and mitigation]
+
+  tasks:
+    - |
+      REQUIRED FORMAT for tasks.md:
+      All headings in English. Body content in Indonesian.
+
+      ## {Number}. {Phase Name}
+      - [ ] {Number}.{Sub} {Task description.}
+
+    - Every task MUST represent less than 2 hours of effort.
+    - During apply, update `- [ ]` to `- [x]` after completing each task sequentially.
+
+operations:
+  apply:
+    guidance:
+      - Implementation MUST follow tasks.md in sequential order.
+      - MUST NOT add logic not present in spec.md or design.md.

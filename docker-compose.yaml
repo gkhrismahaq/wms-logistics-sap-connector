@@ -1,0 +1,29 @@
+services:
+  odoo:
+    container_name: wms-odoo
+    image: odoo:17.0
+    env_file: .env
+    command: odoo --dev xml
+    ports:
+      - "8070:8069"
+    volumes:
+      - ./etc/odoo:/etc/odoo
+      - ./addons:/mnt/extra-addons
+      - ./var/lib/odoo:/var/lib/odoo
+    depends_on:
+      - wms-postgres
+    networks:
+      - wms-network
+
+  wms-postgres:
+    container_name: wms-postgres
+    image: postgres:15
+    env_file: .env
+    volumes:
+      - ./var/lib/postgresql/data:/var/lib/postgresql/data
+    networks:
+      - wms-network
+
+networks:
+  wms-network:
+    driver: bridge
