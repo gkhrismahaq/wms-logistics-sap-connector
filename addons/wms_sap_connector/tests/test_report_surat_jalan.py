@@ -69,7 +69,9 @@ class TestReportSuratJalan(TransactionCase):
 
         cls.report_action = cls.env.ref("wms_sap_connector.action_report_surat_jalan")
 
-    def _create_outgoing_picking(self, items, vehicle=None, driver=None, sap_doc_number=None):
+    def _create_outgoing_picking(
+        self, items, vehicle=None, driver=None, sap_doc_number=None
+    ):
         """Helper to create and confirm an outgoing picking with moves."""
         picking = self.env["stock.picking"].create(
             {
@@ -103,7 +105,9 @@ class TestReportSuratJalan(TransactionCase):
         self.assertTrue(self.report_action.exists())
         self.assertEqual(self.report_action.model, "stock.picking")
         self.assertEqual(self.report_action.report_type, "qweb-pdf")
-        self.assertEqual(self.report_action.report_name, "wms_sap_connector.report_surat_jalan")
+        self.assertEqual(
+            self.report_action.report_name, "wms_sap_connector.report_surat_jalan"
+        )
         self.assertEqual(self.report_action.binding_model_id.model, "stock.picking")
         self.assertEqual(self.report_action.binding_type, "report")
 
@@ -120,7 +124,11 @@ class TestReportSuratJalan(TransactionCase):
         html_bytes, report_type = self.report_action._render_qweb_html(
             self.report_action.id, [picking.id]
         )
-        html_str = html_bytes.decode("utf-8") if isinstance(html_bytes, bytes) else str(html_bytes)
+        html_str = (
+            html_bytes.decode("utf-8")
+            if isinstance(html_bytes, bytes)
+            else str(html_bytes)
+        )
 
         # Verification of essential headers & transfer information
         self.assertIn("Surat Jalan Pengantaran Barang", html_str)
@@ -147,7 +155,7 @@ class TestReportSuratJalan(TransactionCase):
         self.assertIn("Diterima Dengan Baik Oleh", html_str)
 
         # 2. Test PDF rendering via _render_qweb_pdf
-        pdf_bytes, report_type = self.report_action.with_context(
+        pdf_bytes, _report_type = self.report_action.with_context(
             force_report_rendering=True
         )._render_qweb_pdf(self.report_action.id, [picking.id])
         self.assertTrue(isinstance(pdf_bytes, bytes))
@@ -166,7 +174,11 @@ class TestReportSuratJalan(TransactionCase):
         html_bytes, _ = self.report_action._render_qweb_html(
             self.report_action.id, [picking.id]
         )
-        html_str = html_bytes.decode("utf-8") if isinstance(html_bytes, bytes) else str(html_bytes)
+        html_str = (
+            html_bytes.decode("utf-8")
+            if isinstance(html_bytes, bytes)
+            else str(html_bytes)
+        )
 
         self.assertIn(picking.name, html_str)
         self.assertIn("SO-SJ-EDGE-002", html_str)

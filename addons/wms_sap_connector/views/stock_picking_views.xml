@@ -42,6 +42,20 @@
                         </group>
                     </group>
                 </page>
+                <page string="Proof of Delivery (POD)" name="page_proof_of_delivery"
+                      invisible="picking_type_code != 'outgoing'">
+                    <group>
+                        <group string="Handover Details">
+                            <field name="pod_signed_by" placeholder="e.g. Budi Santoso (Store Manager)"/>
+                            <field name="pod_timestamp"/>
+                            <field name="has_pod"/>
+                        </group>
+                        <group string="Visual Proof / Photo">
+                            <field name="proof_of_delivery" widget="image" class="oe_avatar"
+                                   options="{'preview_image': 'proof_of_delivery', 'size': [300, 300]}"/>
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
@@ -57,6 +71,9 @@
                 <field name="total_weight" optional="hide"/>
                 <field name="total_volume" optional="hide"/>
                 <field name="sap_doc_number" optional="show"/>
+                <field name="pod_signed_by" optional="hide"/>
+                <field name="pod_timestamp" optional="hide"/>
+                <field name="has_pod" optional="hide" widget="boolean_toggle"/>
                 <field name="sap_sync_status" widget="badge" optional="show"
                        decoration-success="sap_sync_status == 'synced'"
                        decoration-danger="sap_sync_status == 'failed'"
@@ -79,6 +96,12 @@
                 <separator/>
                 <filter string="Assigned Vehicle" name="filter_has_vehicle"
                         domain="[('vehicle_id', '!=', False)]"/>
+                <separator/>
+                <filter string="Has POD" name="filter_has_pod"
+                        domain="[('has_pod', '=', True)]"/>
+                <filter string="Missing POD" name="filter_missing_pod"
+                        domain="[('picking_type_code', '=', 'outgoing'), ('has_pod', '=', False)]"/>
+                <separator/>
                 <filter string="SAP Sync Failed" name="filter_sap_failed"
                         domain="[('sap_sync_status', '=', 'failed')]"/>
                 <filter string="SAP Synced" name="filter_sap_synced"

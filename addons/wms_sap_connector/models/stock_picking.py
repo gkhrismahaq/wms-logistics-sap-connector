@@ -79,6 +79,29 @@ class StockPicking(models.Model):
         digits=(12, 4),
         help="Aggregated total volume in cubic meters computed from all active stock moves.",
     )
+    proof_of_delivery = fields.Binary(
+        string="Proof of Delivery (Image / Signature)",
+        attachment=True,
+        copy=False,
+        help="Photo proof of physical handover or scanned signature at destination.",
+    )
+    pod_signed_by = fields.Char(
+        string="Received / Signed By",
+        copy=False,
+        help="Full name of store receiver or authorized person receiving the cargo.",
+    )
+    pod_timestamp = fields.Datetime(
+        string="POD Timestamp",
+        copy=False,
+        help="Timestamp when proof of delivery was recorded.",
+    )
+    has_pod = fields.Boolean(
+        string="Has POD",
+        compute="_compute_has_pod",
+        store=True,
+        index=True,
+        help="Indicates whether physical proof of delivery is available.",
+    )
 
     _sql_constraints = [
         (
@@ -87,6 +110,41 @@ class StockPicking(models.Model):
             "The SAP document number must be unique across all transfer documents.",
         ),
     ]
+
+    @api.depends("proof_of_delivery", "pod_signed_by")
+    def _compute_has_pod(self):
+        """Computes whether physical proof of delivery exists."""
+        for picking in self:
+            picking.has_pod = bool(picking.proof_of_delivery or picking.pod_signed_by)
+
+    @api.onchange("proof_of_delivery", "pod_signed_by")
+    def _onchange_pod_fields(self):
+        """Auto-populates pod_timestamp when proof or receiver is recorded without timestamp."""
+        if (self.proof_of_delivery or self.pod_signed_by) and not self.pod_timestamp:
+            self.pod_timestamp = fields.Datetime.now()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Overrides create to ensure pod_timestamp is populated if POD fields are supplied."""
+        for vals in vals_list:
+            if (
+                vals.get("proof_of_delivery") or vals.get("pod_signed_by")
+            ) and not vals.get("pod_timestamp"):
+                vals["pod_timestamp"] = fields.Datetime.now()
+        return super().create(vals_list)
+
+    def write(self, vals):
+        """Overrides write to ensure pod_timestamp is populated if POD fields are supplied without timestamp."""
+        if (
+            "proof_of_delivery" in vals or "pod_signed_by" in vals
+        ) and "pod_timestamp" not in vals:
+            for picking in self:
+                if not picking.pod_timestamp and (
+                    vals.get("proof_of_delivery") or vals.get("pod_signed_by")
+                ):
+                    vals["pod_timestamp"] = fields.Datetime.now()
+                    break
+        return super().write(vals)
 
     @api.onchange("vehicle_id")
     def _onchange_vehicle_id(self):

@@ -83,7 +83,12 @@ class StockPicking(models.Model):
         if self.vehicle_id and self.vehicle_id.driver_id:
             self.driver_id = self.vehicle_id.driver_id
 
-    @api.depends("move_ids.product_uom_qty", "move_ids.product_id.weight", "move_ids.product_id.volume", "move_ids.state")
+    @api.depends(
+        "move_ids.product_uom_qty",
+        "move_ids.product_id.weight",
+        "move_ids.product_id.volume",
+        "move_ids.state",
+    )
     def _compute_total_weight_volume(self):
         """Computes accumulated weight and volume of all non-cancelled stock moves."""
         for picking in self:
