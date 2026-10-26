@@ -15,6 +15,7 @@
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
+        "data/stock_putaway_data.xml",
         "views/sap_sync_log_views.xml",
         "views/res_config_settings_views.xml",
         "views/product_template_views.xml",

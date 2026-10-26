@@ -13,6 +13,10 @@
                        decoration-warning="sap_sync_status == 'pending'"
                        decoration-info="sap_sync_status == 'draft'"/>
             </xpath>
+            <xpath expr="//field[@name='move_ids_without_package']/tree//field[@name='location_dest_id']" position="attributes">
+                <attribute name="column_invisible">False</attribute>
+                <attribute name="optional">show</attribute>
+            </xpath>
         </field>
     </record>
 

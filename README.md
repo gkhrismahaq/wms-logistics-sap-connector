@@ -4,7 +4,7 @@ Sistem eksekusi pergudangan (*Warehouse Management System*) dan logistik pengant
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Menjalankan Container
 Pastikan Docker Desktop sudah aktif, lalu jalankan:
@@ -31,7 +31,7 @@ make addon <nama> # Restart & upgrade modul custom spesifik
 
 ---
 
-## 📂 Struktur Project
+## Struktur Project
 
 ```
 wms-logistics-sap-connector/
@@ -44,8 +44,3 @@ wms-logistics-sap-connector/
 ├── Makefile             # Automation shortcut commands
 └── README.md
 ```
-
----
-
-## 📖 Metodologi
-Project ini dikembangkan menggunakan metodologi **Spec-Driven Development** via **OpenSpec**. Setiap penambahan fitur bisnis diawali dengan proposal, spesifikasi fungsional, dan *task list* sebelum implementasi kode.

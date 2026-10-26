@@ -3,3 +3,5 @@ access_sap_sync_log_manager,sap.sync.log.manager,model_sap_sync_log,group_wms_ma
 access_sap_sync_log_system,sap.sync.log.system,model_sap_sync_log,base.group_system,1,1,1,1
 access_sap_sync_log_operator,sap.sync.log.operator,model_sap_sync_log,group_wms_operator,1,0,0,0
 access_sap_sync_log_dispatcher,sap.sync.log.dispatcher,model_sap_sync_log,group_wms_dispatcher,1,0,0,0
+access_stock_putaway_rule_operator,stock.putaway.rule.operator,stock.model_stock_putaway_rule,group_wms_operator,1,0,0,0
+access_stock_putaway_rule_manager,stock.putaway.rule.manager,stock.model_stock_putaway_rule,group_wms_manager,1,1,1,1

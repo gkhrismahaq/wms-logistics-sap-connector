@@ -277,4 +277,7 @@ class StockPicking(models.Model):
         if picking.state == PICKING_STATE_CONFIRMED:
             picking.action_assign()
 
+        if picking.move_line_ids:
+            picking.move_line_ids._apply_putaway_strategy()
+
         return picking, True
