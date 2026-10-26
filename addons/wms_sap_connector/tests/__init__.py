@@ -3,6 +3,7 @@ from . import (
     test_outbound_delivery_api,
     test_picking_dispatch_fields,
     test_putaway_allocation,
+    test_report_surat_jalan,
     test_vehicle_views,
     test_webhook_goods_receipt,
     test_wms_vehicle,

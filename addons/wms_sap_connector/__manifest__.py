@@ -20,6 +20,7 @@
         "views/product_template_views.xml",
         "views/res_partner_views.xml",
         "views/stock_location_views.xml",
+        "report/report_surat_jalan.xml",
         "views/stock_picking_views.xml",
         "views/wms_vehicle_views.xml",
     ],

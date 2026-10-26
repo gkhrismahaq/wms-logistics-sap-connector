@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action Report Definition -->
+    <record id="action_report_surat_jalan" model="ir.actions.report">
+        <field name="name">Surat Jalan (Delivery Slip)</field>
+        <field name="model">stock.picking</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">wms_sap_connector.report_surat_jalan</field>
+        <field name="report_file">wms_sap_connector.report_surat_jalan</field>
+        <field name="print_report_name">'Surat_Jalan_%s' % (object.name.replace('/', '_'))</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Main Report Template Wrapper -->
+    <template id="report_surat_jalan">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="wms_sap_connector.report_surat_jalan_document" t-lang="o.partner_id.lang or o.env.lang"/>
+            </t>
+        </t>
+    </template>
+
+    <!-- Document Layout Template -->
+    <template id="report_surat_jalan_document">
+        <t t-call="web.external_layout">
+            <t t-set="o" t-value="o.with_context(lang=lang)"/>
+            <div class="page" style="font-size: 13px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+                <!-- Header Title & Barcodes -->
+                <div class="row pb-2 mb-3 border-bottom border-dark">
+                    <div class="col-7">
+                        <h3 class="fw-bold mb-1 text-uppercase text-dark">Surat Jalan Pengantaran Barang</h3>
+                        <p class="text-muted mb-0 small">Official Delivery Slip &amp; Cargo Handover Document</p>
+                        <p class="mb-0 mt-1"><strong>Facility:</strong> Distribution Center Lowokwaru (DC LOW)</p>
+                    </div>
+                    <div class="col-5 text-end">
+                        <div class="d-inline-block text-center">
+                            <span t-field="o.name" t-options="{'widget': 'barcode', 'width': 600, 'height': 100, 'img_style': 'width:220px;height:40px;'}"/>
+                            <div class="small fw-bold mt-1" t-field="o.name"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document & Delivery Metadata (2 Columns) -->
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="card p-2 border-secondary h-100" style="background-color: #f8f9fa;">
+                            <h6 class="fw-bold border-bottom pb-1 mb-2 text-dark">Informasi Dokumen Transfer</h6>
+                            <table class="table table-sm table-borderless mb-0 small">
+                                <tr>
+                                    <td class="fw-bold text-nowrap" style="width: 35%;">No. Transfer (DO):</td>
+                                    <td><span t-field="o.name"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-nowrap">No. Referensi SAP:</td>
+                                    <td>
+                                        <span t-if="o.sap_doc_number" class="fw-bold text-primary" t-field="o.sap_doc_number"/>
+                                        <span t-else="" class="text-muted">-</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-nowrap">Tgl. Terjadwal:</td>
+                                    <td><span t-field="o.scheduled_date" t-options="{'widget': 'date'}"/></td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold text-nowrap">Status Sinkronisasi:</td>
+                                    <td><span t-field="o.sap_sync_status"/></td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card p-2 border-secondary h-100" style="background-color: #f8f9fa;">
+                            <h6 class="fw-bold border-bottom pb-1 mb-2 text-dark">Tujuan Pengiriman &amp; Penerima</h6>
+                            <div class="small">
+                                <div class="fw-bold fs-6 text-dark" t-field="o.partner_id.name"/>
+                                <div t-if="o.partner_id.street" t-field="o.partner_id.street"/>
+                                <div t-if="o.partner_id.street2" t-field="o.partner_id.street2"/>
+                                <div>
+                                    <span t-if="o.partner_id.city" t-field="o.partner_id.city"/>
+                                    <span t-if="o.partner_id.state_id">, <span t-field="o.partner_id.state_id.name"/></span>
+                                    <span t-if="o.partner_id.zip"> <span t-field="o.partner_id.zip"/></span>
+                                </div>
+                                <div t-if="o.partner_id.phone">
+                                    <span class="fw-bold">Telp: </span><span t-field="o.partner_id.phone"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fleet Assignment & Cargo Metrics Box -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="border rounded p-2" style="background-color: #eef2f7;">
+                            <div class="row text-center small">
+                                <div class="col-3 border-end">
+                                    <div class="text-muted text-uppercase fw-semibold" style="font-size: 11px;">Armada / Kendaraan</div>
+                                    <div class="fw-bold fs-6 text-dark">
+                                        <span t-if="o.vehicle_id" t-field="o.vehicle_id.license_plate"/>
+                                        <span t-else="" class="text-muted">-</span>
+                                    </div>
+                                </div>
+                                <div class="col-3 border-end">
+                                    <div class="text-muted text-uppercase fw-semibold" style="font-size: 11px;">Supir / Kurir Bertugas</div>
+                                    <div class="fw-bold fs-6 text-dark">
+                                        <span t-if="o.driver_id" t-field="o.driver_id.name"/>
+                                        <span t-else="" class="text-muted">-</span>
+                                    </div>
+                                </div>
+                                <div class="col-3 border-end">
+                                    <div class="text-muted text-uppercase fw-semibold" style="font-size: 11px;">Total Berat Kargo</div>
+                                    <div class="fw-bold fs-6 text-dark">
+                                        <span t-field="o.total_weight" t-options="{'widget': 'float', 'precision': 2}"/> kg
+                                    </div>
+                                </div>
+                                <div class="col-3">
+                                    <div class="text-muted text-uppercase fw-semibold" style="font-size: 11px;">Total Volume Kargo</div>
+                                    <div class="fw-bold fs-6 text-dark">
+                                        <span t-field="o.total_volume" t-options="{'widget': 'float', 'precision': 4}"/> m³
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cargo Items Table -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <table class="table table-sm table-striped table-bordered mb-0">
+                            <thead class="table-dark small text-center">
+                                <tr>
+                                    <th style="width: 5%;">No</th>
+                                    <th style="width: 20%;">Kode SKU / Material</th>
+                                    <th style="width: 45%;">Deskripsi Nama Barang</th>
+                                    <th style="width: 15%;">Jumlah Kuantitas</th>
+                                    <th style="width: 15%;">Satuan (UoM)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                <t t-set="lines" t-value="o.move_ids.filtered(lambda m: m.state != 'cancel')"/>
+                                <t t-set="line_idx" t-value="0"/>
+                                <tr t-foreach="lines" t-as="move">
+                                    <t t-set="line_idx" t-value="line_idx + 1"/>
+                                    <td class="text-center"><span t-esc="line_idx"/></td>
+                                    <td>
+                                        <span t-if="move.product_id.sap_material_code" class="fw-bold" t-field="move.product_id.sap_material_code"/>
+                                        <span t-elif="move.product_id.default_code" t-field="move.product_id.default_code"/>
+                                        <span t-else="" class="text-muted">-</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold" t-field="move.product_id.name"/>
+                                        <div t-if="move.description_picking and move.description_picking != move.product_id.name" class="text-muted small" t-field="move.description_picking"/>
+                                    </td>
+                                    <td class="text-end fw-bold">
+                                        <span t-field="move.product_uom_qty" t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                    <td class="text-center">
+                                        <span t-field="move.product_uom.name"/>
+                                    </td>
+                                </tr>
+                                <tr t-if="not lines">
+                                    <td colspan="5" class="text-center text-muted fst-italic py-3">
+                                        Tidak ada baris kargo pada dokumen pengeluaran barang ini.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3 Signatures Blocks (Legalitas Fisik) -->
+                <div class="mt-4 pt-3 border-top">
+                    <div class="row text-center small">
+                        <!-- Column 1: Prepared By -->
+                        <div class="col-4">
+                            <div class="fw-bold text-uppercase">Disiapkan / Dikeluarkan Oleh</div>
+                            <div class="text-muted small">(Petugas Gudang / Dispatcher)</div>
+                            <div style="height: 65px;"/>
+                            <div class="fw-bold border-top border-dark mx-3 pt-1">
+                                ( .................................................... )
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 11px;">Tgl: ____ / ____ / ________</div>
+                        </div>
+
+                        <!-- Column 2: Delivered By -->
+                        <div class="col-4">
+                            <div class="fw-bold text-uppercase">Dibawa / Diantar Oleh</div>
+                            <div class="text-muted small">(Supir Pengantar / Kurir)</div>
+                            <div style="height: 65px;"/>
+                            <div class="fw-bold border-top border-dark mx-3 pt-1">
+                                ( <span t-if="o.driver_id" t-field="o.driver_id.name"/><span t-else="">....................................................</span> )
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 11px;">Tgl: ____ / ____ / ________</div>
+                        </div>
+
+                        <!-- Column 3: Received By -->
+                        <div class="col-4">
+                            <div class="fw-bold text-uppercase">Diterima Dengan Baik Oleh</div>
+                            <div class="text-muted small">(Penerima Toko / Customer)</div>
+                            <div style="height: 65px;"/>
+                            <div class="fw-bold border-top border-dark mx-3 pt-1">
+                                ( .................................................... )
+                            </div>
+                            <div class="text-muted mt-1" style="font-size: 11px;">Cap &amp; Tgl: ____ / ____ / ________</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Footnote -->
+                <div class="row mt-4 pt-2 border-top">
+                    <div class="col-12 text-center text-muted" style="font-size: 10px;">
+                        <em>Dokumen fisik resmi ini sah sebagai bukti serah terima kargo dari DC Lowokwaru. Mohon simpan lembar asli untuk arsip penerima toko.</em>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -11,6 +11,11 @@
                         type="object"
                         class="btn-secondary"
                         invisible="state != 'done' or sap_sync_status == 'synced' or not sap_doc_number"/>
+                <button name="%(wms_sap_connector.action_report_surat_jalan)d"
+                        string="Print Surat Jalan"
+                        type="action"
+                        class="btn-primary"
+                        invisible="picking_type_code != 'outgoing'"/>
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="sap_doc_number" placeholder="e.g. PO-SAP-2026-001 or SO-DELIV-2026-901"/>
