@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Test suite for WMS Vehicle Model and Security Access Control.
 
 Validates REQ-FLT-01 (wms.vehicle attributes, unique constraint, non-negative capacity)
@@ -6,11 +5,11 @@ and REQ-FLT-02 (role-based access control for Dispatcher, Manager, and Operator)
 """
 
 import uuid
-from psycopg2 import IntegrityError
 
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase, tagged
 from odoo.tools import mute_logger
+from psycopg2 import IntegrityError
 
 from ..constants import (
     VEHICLE_STATE_AVAILABLE,
@@ -182,8 +181,12 @@ class TestWmsVehicle(TransactionCase):
             vehicle_disp.with_user(self.user_operator).unlink()
 
         # 6. Manager CAN WRITE & UNLINK
-        vehicle_disp.with_user(self.user_manager).write({"state": VEHICLE_STATE_MAINTENANCE})
+        vehicle_disp.with_user(self.user_manager).write(
+            {"state": VEHICLE_STATE_MAINTENANCE}
+        )
         self.assertEqual(vehicle_disp.state, VEHICLE_STATE_MAINTENANCE)
 
         vehicle_disp.with_user(self.user_manager).unlink()
-        self.assertFalse(self.env["wms.vehicle"].search([("license_plate", "=", plate_disp)]))
+        self.assertFalse(
+            self.env["wms.vehicle"].search([("license_plate", "=", plate_disp)])
+        )

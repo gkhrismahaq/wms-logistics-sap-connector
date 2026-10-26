@@ -63,7 +63,7 @@ class TestWebhookGoodsReceipt(TransactionCase):
                 {"sap_material_code": "MAT-KOPI-01", "qty": 10},
             ],
         }
-        picking, is_created = self.env["stock.picking"].create_inbound_from_sap(payload)
+        picking, _is_created = self.env["stock.picking"].create_inbound_from_sap(payload)
         self.assertEqual(picking.state, "assigned")
         return picking
 

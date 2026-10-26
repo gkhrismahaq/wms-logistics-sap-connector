@@ -21,6 +21,7 @@
         "views/res_partner_views.xml",
         "views/stock_location_views.xml",
         "views/stock_picking_views.xml",
+        "views/wms_vehicle_views.xml",
     ],
     "installable": True,
     "application": True,

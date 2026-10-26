@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """WMS Vehicle Model for Fleet Management.
 
 Provides the wms.vehicle model to track logistics transport vehicles,

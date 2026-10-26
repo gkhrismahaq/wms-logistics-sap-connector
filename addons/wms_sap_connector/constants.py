@@ -1,4 +1,3 @@
-
 CONFIG_PARAM_SAP_BASE_URL = "wms_sap_connector.sap_base_url"
 CONFIG_PARAM_SAP_API_TOKEN = "wms_sap_connector.sap_api_token"
 
@@ -89,4 +88,3 @@ VEHICLE_STATE_SELECTION = [
     (VEHICLE_STATE_ON_DELIVERY, "Sedang Bertugas / Pengantaran"),
     (VEHICLE_STATE_MAINTENANCE, "Perawatan / Bengkel"),
 ]
-

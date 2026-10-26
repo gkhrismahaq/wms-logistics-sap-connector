@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View for wms.vehicle -->
+    <record id="view_wms_vehicle_tree" model="ir.ui.view">
+        <field name="name">wms.vehicle.tree</field>
+        <field name="model">wms.vehicle</field>
+        <field name="arch" type="xml">
+            <tree string="Fleet Vehicles">
+                <field name="license_plate"/>
+                <field name="driver_id"/>
+                <field name="max_weight" string="Max Weight (kg)"/>
+                <field name="max_volume" string="Max Volume (m³)"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'available'"
+                       decoration-info="state == 'on_delivery'"
+                       decoration-warning="state == 'maintenance'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View for wms.vehicle -->
+    <record id="view_wms_vehicle_form" model="ir.ui.view">
+        <field name="name">wms.vehicle.form</field>
+        <field name="model">wms.vehicle</field>
+        <field name="arch" type="xml">
+            <form string="Fleet Vehicle">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="available,on_delivery,maintenance"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="license_plate" class="oe_edit_only" string="License Plate"/>
+                        <h1>
+                            <field name="license_plate" placeholder="e.g. B 1234 WMS"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Driver Assignment">
+                            <field name="driver_id" options="{'no_create_edit': True}"/>
+                        </group>
+                        <group string="Cargo Capacity">
+                            <field name="max_weight" string="Max Weight (kg)"/>
+                            <field name="max_volume" string="Max Volume (m³)"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View for wms.vehicle -->
+    <record id="view_wms_vehicle_search" model="ir.ui.view">
+        <field name="name">wms.vehicle.search</field>
+        <field name="model">wms.vehicle</field>
+        <field name="arch" type="xml">
+            <search string="Search Fleet Vehicles">
+                <field name="license_plate" string="Vehicle / License Plate"/>
+                <field name="driver_id" string="Driver"/>
+                <separator/>
+                <filter name="filter_available" string="Available / Siap Jalan" domain="[('state', '=', 'available')]"/>
+                <filter name="filter_on_delivery" string="On Delivery / Sedang Bertugas" domain="[('state', '=', 'on_delivery')]"/>
+                <filter name="filter_maintenance" string="Maintenance / Bengkel" domain="[('state', '=', 'maintenance')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_by_driver" string="Driver" context="{'group_by': 'driver_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action for wms.vehicle -->
+    <record id="action_wms_vehicle" model="ir.actions.act_window">
+        <field name="name">Fleet Vehicles</field>
+        <field name="res_model">wms.vehicle</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_wms_vehicle_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Register a new logistics transport vehicle.
+            </p>
+            <p>
+                Manage your fleet, assigned drivers, and weight/volume load capacities for outbound delivery dispatching.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="menu_wms_logistics_root" name="Logistics &amp; Delivery"
+              parent="stock.menu_stock_root" sequence="25"/>
+    <menuitem id="menu_wms_vehicle" name="Fleet Vehicles"
+              parent="menu_wms_logistics_root" action="action_wms_vehicle" sequence="10"/>
+</odoo>
