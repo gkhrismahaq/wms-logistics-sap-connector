@@ -72,7 +72,9 @@ class StockPicking(models.Model):
             payload = {
                 "sap_doc_number": picking.sap_doc_number,
                 "status": WEBHOOK_STATUS_GOODS_ISSUED,
-                "issued_date": (picking.pod_timestamp or fields.Datetime.now()).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "issued_date": (
+                    picking.pod_timestamp or fields.Datetime.now()
+                ).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "receiver_name": picking.pod_signed_by or "Penerima Kargo",
                 "has_pod": bool(picking.has_pod),
             }
@@ -87,7 +89,11 @@ class StockPicking(models.Model):
     def _action_done(self):
         res = super()._action_done()
         for picking in self:
-            if picking.picking_type_id.code == PICKING_TYPE_CODE_OUTGOING and picking.sap_doc_number and picking.has_pod:
+            if (
+                picking.picking_type_id.code == PICKING_TYPE_CODE_OUTGOING
+                and picking.sap_doc_number
+                and picking.has_pod
+            ):
                 picking._send_sap_goods_issue_webhook()
         return res
 

@@ -24,6 +24,22 @@ services:
     networks:
       - wms-network
 
+  mock-sap:
+    container_name: wms-mock-sap
+    build:
+      context: .
+      dockerfile: Dockerfile.mock_sap
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - SAP_API_TOKEN=secret_sap_token_123
+      - ODOO_BASE_URL=http://odoo:8069
+    networks:
+      - wms-network
+    depends_on:
+      - odoo
+
 networks:
   wms-network:
     driver: bridge
