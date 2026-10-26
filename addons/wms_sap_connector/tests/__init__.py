@@ -1,6 +1,7 @@
 from . import (
     test_inbound_po_api,
     test_outbound_delivery_api,
+    test_picking_dispatch_fields,
     test_putaway_allocation,
     test_vehicle_views,
     test_webhook_goods_receipt,

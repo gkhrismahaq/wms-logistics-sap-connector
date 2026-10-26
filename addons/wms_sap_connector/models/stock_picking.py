@@ -1,10 +1,11 @@
 import json
 import logging
 import uuid
-from datetime import UTC, datetime, time
+from datetime import datetime, time, timezone
 
 import requests
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 from ..constants import (
     AUTH_BEARER_PREFIX,
@@ -49,6 +50,35 @@ class StockPicking(models.Model):
         copy=False,
         help="Lifecycle status of document synchronization with SAP.",
     )
+    vehicle_id = fields.Many2one(
+        comodel_name="wms.vehicle",
+        string="Vehicle / Fleet",
+        domain="[('state', '!=', 'maintenance')]",
+        index=True,
+        copy=False,
+        help="Physical cargo delivery vehicle assigned to this transfer.",
+    )
+    driver_id = fields.Many2one(
+        comodel_name="res.partner",
+        string="Driver",
+        domain="[('is_company', '=', False)]",
+        copy=False,
+        help="Responsible courier or driver conducting the delivery.",
+    )
+    total_weight = fields.Float(
+        string="Total Weight (kg)",
+        compute="_compute_total_weight_volume",
+        store=True,
+        digits=(12, 2),
+        help="Aggregated total weight in kilograms computed from all active stock moves.",
+    )
+    total_volume = fields.Float(
+        string="Total Volume (m³)",
+        compute="_compute_total_weight_volume",
+        store=True,
+        digits=(12, 4),
+        help="Aggregated total volume in cubic meters computed from all active stock moves.",
+    )
 
     _sql_constraints = [
         (
@@ -57,6 +87,52 @@ class StockPicking(models.Model):
             "The SAP document number must be unique across all transfer documents.",
         ),
     ]
+
+    @api.onchange("vehicle_id")
+    def _onchange_vehicle_id(self):
+        """Auto-populates driver from assigned vehicle default driver."""
+        if self.vehicle_id and self.vehicle_id.driver_id:
+            self.driver_id = self.vehicle_id.driver_id
+
+    @api.depends(
+        "move_ids.product_uom_qty",
+        "move_ids.product_id.weight",
+        "move_ids.product_id.volume",
+        "move_ids.state",
+    )
+    def _compute_total_weight_volume(self):
+        """Computes accumulated weight and volume of all non-cancelled stock moves."""
+        for picking in self:
+            weight = 0.0
+            volume = 0.0
+            for move in picking.move_ids.filtered(lambda m: m.state != "cancel"):
+                qty = move.product_uom_qty or 0.0
+                prod = move.product_id
+                if prod:
+                    weight += (prod.weight or 0.0) * qty
+                    volume += (prod.volume or 0.0) * qty
+            picking.total_weight = weight
+            picking.total_volume = volume
+
+    @api.constrains("vehicle_id", "total_weight", "total_volume")
+    def _check_vehicle_capacity(self):
+        """Enforces vehicle cargo capacity limits against aggregated weight and volume."""
+        for picking in self:
+            if not picking.vehicle_id:
+                continue
+            v = picking.vehicle_id
+            if v.max_weight > 0.0 and picking.total_weight > v.max_weight:
+                raise ValidationError(
+                    f"Overcapacity Error: Total weight ({picking.total_weight:.2f} kg) "
+                    f"exceeds vehicle maximum weight capacity ({v.max_weight:.2f} kg) "
+                    f"for vehicle '{v.license_plate}'."
+                )
+            if v.max_volume > 0.0 and picking.total_volume > v.max_volume:
+                raise ValidationError(
+                    f"Overcapacity Error: Total volume ({picking.total_volume:.4f} m³) "
+                    f"exceeds vehicle maximum volume capacity ({v.max_volume:.4f} m³) "
+                    f"for vehicle '{v.license_plate}'."
+                )
 
     def action_mark_synced(self):
         """Marks picking record as synced to SAP."""
@@ -470,7 +546,7 @@ class StockPicking(models.Model):
                     clean_date = clean_date.replace("Z", "+00:00")
                     dt = datetime.fromisoformat(clean_date)
                     if dt.tzinfo is not None:
-                        dt = dt.astimezone(UTC).replace(tzinfo=None)
+                        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
                     scheduled_date = dt
                 else:
                     parsed_date = datetime.strptime(clean_date, "%Y-%m-%d").date()
@@ -772,7 +848,7 @@ class StockPicking(models.Model):
                     clean_date = clean_date.replace("Z", "+00:00")
                     dt = datetime.fromisoformat(clean_date)
                     if dt.tzinfo is not None:
-                        dt = dt.astimezone(UTC).replace(tzinfo=None)
+                        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
                     scheduled_date = dt
                 else:
                     parsed_date = datetime.strptime(clean_date, "%Y-%m-%d").date()

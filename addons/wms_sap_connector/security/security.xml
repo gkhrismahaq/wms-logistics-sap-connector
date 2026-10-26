@@ -17,7 +17,7 @@
         <record id="group_wms_dispatcher" model="res.groups">
             <field name="name">Logistics Dispatcher</field>
             <field name="category_id" ref="module_category_wms_logistics" />
-            <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />
+            <field name="implied_ids" eval="[(4, ref('base.group_user')), (4, ref('stock.group_stock_user'))]" />
             <field name="comment">Fleet management, driver assignment, delivery slips, and Proof of Delivery (POD).</field>
         </record>
 

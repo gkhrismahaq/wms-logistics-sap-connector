@@ -24,6 +24,20 @@
                 <attribute name="column_invisible">False</attribute>
                 <attribute name="optional">show</attribute>
             </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Fleet &amp; Dispatch" name="page_fleet_dispatch">
+                    <group>
+                        <group string="Fleet Assignment">
+                            <field name="vehicle_id" options="{'no_create': True}"/>
+                            <field name="driver_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Cargo Load Summary">
+                            <field name="total_weight"/>
+                            <field name="total_volume"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
         </field>
     </record>
 
@@ -33,6 +47,10 @@
         <field name="inherit_id" ref="stock.vpicktree"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='origin']" position="after">
+                <field name="vehicle_id" optional="show"/>
+                <field name="driver_id" optional="hide"/>
+                <field name="total_weight" optional="hide"/>
+                <field name="total_volume" optional="hide"/>
                 <field name="sap_doc_number" optional="show"/>
                 <field name="sap_sync_status" widget="badge" optional="show"
                        decoration-success="sap_sync_status == 'synced'"
@@ -49,9 +67,13 @@
         <field name="inherit_id" ref="stock.view_picking_internal_search"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='origin']" position="after">
+                <field name="vehicle_id"/>
+                <field name="driver_id"/>
                 <field name="sap_doc_number" string="SAP Document Number"
                        filter_domain="[('sap_doc_number', 'ilike', self)]"/>
                 <separator/>
+                <filter string="Assigned Vehicle" name="filter_has_vehicle"
+                        domain="[('vehicle_id', '!=', False)]"/>
                 <filter string="SAP Sync Failed" name="filter_sap_failed"
                         domain="[('sap_sync_status', '=', 'failed')]"/>
                 <filter string="SAP Synced" name="filter_sap_synced"
@@ -60,6 +82,8 @@
                         domain="[('sap_sync_status', '=', 'draft')]"/>
             </xpath>
             <xpath expr="//group[@expand='0']" position="inside">
+                <filter string="Vehicle" name="group_vehicle" context="{'group_by': 'vehicle_id'}"/>
+                <filter string="Driver" name="group_driver" context="{'group_by': 'driver_id'}"/>
                 <filter string="SAP Sync Status" name="group_sap_sync_status"
                         context="{'group_by': 'sap_sync_status'}"/>
             </xpath>
