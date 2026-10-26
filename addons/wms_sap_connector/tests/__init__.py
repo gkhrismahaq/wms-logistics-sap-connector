@@ -1,4 +1,5 @@
 from . import (
+    test_e2e_integration,
     test_inbound_po_api,
     test_outbound_delivery_api,
     test_picking_dispatch_fields,
