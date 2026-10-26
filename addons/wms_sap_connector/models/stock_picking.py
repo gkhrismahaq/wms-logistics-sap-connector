@@ -1,17 +1,33 @@
 # -*- coding: utf-8 -*-
+import json
 import logging
+import uuid
 from datetime import datetime, time
+
+import requests
 
 from odoo import api, fields, models
 from ..constants import (
+    AUTH_BEARER_PREFIX,
+    CONFIG_PARAM_SAP_API_TOKEN,
+    CONFIG_PARAM_SAP_BASE_URL,
+    DIRECTION_OUTBOUND,
+    HTTP_HEADER_API_KEY,
+    HTTP_HEADER_AUTHORIZATION,
     PICKING_STATE_ASSIGNED,
     PICKING_STATE_CANCEL,
     PICKING_STATE_CONFIRMED,
     PICKING_TYPE_CODE_INCOMING,
+    REF_PREFIX_GOODS_RECEIPT,
+    SAP_ENDPOINT_GOODS_RECEIPT,
     SAP_PICKING_SYNC_STATUS_SELECTION,
     SYNC_STATUS_DRAFT,
     SYNC_STATUS_FAILED,
+    SYNC_STATUS_SUCCESS,
     SYNC_STATUS_SYNCED,
+    SYNC_TYPE_INBOUND_PO,
+    WEBHOOK_STATUS_GOODS_RECEIVED,
+    WEBHOOK_TIMEOUT_SECONDS,
 )
 
 _logger = logging.getLogger(__name__)
@@ -50,6 +66,142 @@ class StockPicking(models.Model):
     def action_mark_failed(self):
         """Marks picking record as sync failed."""
         return self.write({"sap_sync_status": SYNC_STATUS_FAILED})
+
+    def _generate_sync_ref(self, prefix=REF_PREFIX_GOODS_RECEIPT):
+        """Generates unique transaction reference: SYNC-{prefix}-YYYYMMDD-XXXXXX."""
+        date_str = datetime.now().strftime("%Y%m%d")
+        short_id = uuid.uuid4().hex[:6].upper()
+        return f"SYNC-{prefix}-{date_str}-{short_id}"
+
+    def _send_sap_goods_receipt_webhook(self):
+        """Sends Goods Receipt confirmation webhook HTTP POST to SAP Upper Line.
+
+        Formats payload as:
+        {
+            "sap_doc_number": self.sap_doc_number,
+            "status": "GOODS_RECEIVED",
+            "received_date": "YYYY-MM-DDTHH:MM:SSZ",
+            "warehouse_code": warehouse_code
+        }
+        Captures the response (including sap_accounting_log) and writes to sap.sync.log.
+        Updates self.sap_sync_status to synced on success or failed on error.
+        Ensures fail-safe, non-blocking execution so physical stock movement is not blocked.
+        """
+        for picking in self:
+            if not picking.sap_doc_number:
+                continue
+
+            sync_ref = picking._generate_sync_ref(REF_PREFIX_GOODS_RECEIPT)
+            sap_base_url = (
+                picking.env["ir.config_parameter"]
+                .sudo()
+                .get_param(CONFIG_PARAM_SAP_BASE_URL)
+            )
+            sap_api_token = (
+                picking.env["ir.config_parameter"]
+                .sudo()
+                .get_param(CONFIG_PARAM_SAP_API_TOKEN)
+            )
+
+            warehouse_code = False
+            if picking.picking_type_id and picking.picking_type_id.warehouse_id:
+                warehouse_code = picking.picking_type_id.warehouse_id.code
+            if not warehouse_code:
+                warehouse_code = picking.company_id.name or "DEFAULT_WH"
+
+            received_date = (picking.date_done or fields.Datetime.now()).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+            payload = {
+                "sap_doc_number": picking.sap_doc_number,
+                "status": WEBHOOK_STATUS_GOODS_RECEIVED,
+                "received_date": received_date,
+                "warehouse_code": warehouse_code,
+            }
+            payload_str = json.dumps(payload)
+
+            if not sap_base_url:
+                err_msg = "SAP Base URL not configured in system settings."
+                _logger.warning("Picking %s webhook aborted: %s", picking.name, err_msg)
+                picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
+                picking.env["sap.sync.log"].sudo().create({
+                    "name": sync_ref,
+                    "sync_type": SYNC_TYPE_INBOUND_PO,
+                    "direction": DIRECTION_OUTBOUND,
+                    "payload": payload_str,
+                    "status": SYNC_STATUS_FAILED,
+                    "error_message": err_msg,
+                    "sync_date": fields.Datetime.now(),
+                })
+                continue
+
+            endpoint_url = sap_base_url.rstrip("/") + SAP_ENDPOINT_GOODS_RECEIPT
+            headers = {
+                "Content-Type": "application/json",
+            }
+            if sap_api_token:
+                headers[HTTP_HEADER_AUTHORIZATION] = f"{AUTH_BEARER_PREFIX}{sap_api_token}"
+                headers[HTTP_HEADER_API_KEY] = sap_api_token
+
+            try:
+                response = requests.post(
+                    endpoint_url,
+                    data=payload_str,
+                    headers=headers,
+                    timeout=WEBHOOK_TIMEOUT_SECONDS,
+                )
+                resp_text = response.text
+                if response.status_code in (200, 201):
+                    _logger.info("Goods Receipt webhook success for %s: %s", picking.sap_doc_number, resp_text)
+                    picking.sudo().write({"sap_sync_status": SYNC_STATUS_SYNCED})
+                    picking.env["sap.sync.log"].sudo().create({
+                        "name": sync_ref,
+                        "sync_type": SYNC_TYPE_INBOUND_PO,
+                        "direction": DIRECTION_OUTBOUND,
+                        "payload": resp_text,
+                        "status": SYNC_STATUS_SUCCESS,
+                        "error_message": False,
+                        "sync_date": fields.Datetime.now(),
+                    })
+                else:
+                    err_msg = f"HTTP {response.status_code}: {resp_text}"
+                    _logger.warning("Goods Receipt webhook failed for %s: %s", picking.sap_doc_number, err_msg)
+                    picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
+                    picking.env["sap.sync.log"].sudo().create({
+                        "name": sync_ref,
+                        "sync_type": SYNC_TYPE_INBOUND_PO,
+                        "direction": DIRECTION_OUTBOUND,
+                        "payload": payload_str,
+                        "status": SYNC_STATUS_FAILED,
+                        "error_message": err_msg,
+                        "sync_date": fields.Datetime.now(),
+                    })
+            except Exception as exc:
+                err_msg = f"Connection error: {str(exc)}"
+                _logger.exception("Failed to send Goods Receipt webhook for %s: %s", picking.sap_doc_number, err_msg)
+                picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
+                picking.env["sap.sync.log"].sudo().create({
+                    "name": sync_ref,
+                    "sync_type": SYNC_TYPE_INBOUND_PO,
+                    "direction": DIRECTION_OUTBOUND,
+                    "payload": payload_str,
+                    "status": SYNC_STATUS_FAILED,
+                    "error_message": err_msg,
+                    "sync_date": fields.Datetime.now(),
+                })
+
+    def action_send_sap_goods_receipt_webhook(self):
+        """Action button to manually trigger or retry Goods Receipt webhook transmission."""
+        self.ensure_one()
+        self._send_sap_goods_receipt_webhook()
+        return True
+
+    def _action_done(self):
+        """Overrides _action_done to trigger Goods Receipt webhook for completed incoming pickings."""
+        res = super()._action_done()
+        for picking in self:
+            if picking.picking_type_id.code == PICKING_TYPE_CODE_INCOMING and picking.sap_doc_number:
+                picking._send_sap_goods_receipt_webhook()
+        return res
 
     @api.model
     def create_inbound_from_sap(self, payload_dict):
