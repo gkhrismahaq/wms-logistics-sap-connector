@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 from odoo import fields, models
+
 from ..constants import (
     CONFIG_PARAM_SAP_API_TOKEN,
     CONFIG_PARAM_SAP_BASE_URL,

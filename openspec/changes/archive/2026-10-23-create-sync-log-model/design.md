@@ -57,57 +57,74 @@ from odoo.exceptions import UserError
 
 
 class SapSyncLog(models.Model):
-    _name = 'sap.sync.log'
-    _description = 'SAP Synchronization Audit Log'
-    _order = 'sync_date desc, id desc'
+    _name = "sap.sync.log"
+    _description = "SAP Synchronization Audit Log"
+    _order = "sync_date desc, id desc"
 
     name = fields.Char(
-        string='Transaction Reference',
+        string="Transaction Reference",
         required=True,
         copy=False,
         index=True,
-        help='Unique reference code or identifier for this synchronization event.'
+        help="Unique reference code or identifier for this synchronization event.",
     )
-    sync_type = fields.Selection([
-        ('master_product', 'Master Product / Material'),
-        ('master_partner', 'Master Partner / Vendor / Customer'),
-        ('inbound_po', 'Inbound Purchase Order'),
-        ('outbound_so', 'Outbound Sales Delivery'),
-    ], string='Sync Type', required=True, index=True)
-    direction = fields.Selection([
-        ('inbound', 'Inbound (SAP -> Odoo)'),
-        ('outbound', 'Outbound (Odoo -> SAP)'),
-    ], string='Direction', required=True, index=True)
+    sync_type = fields.Selection(
+        [
+            ("master_product", "Master Product / Material"),
+            ("master_partner", "Master Partner / Vendor / Customer"),
+            ("inbound_po", "Inbound Purchase Order"),
+            ("outbound_so", "Outbound Sales Delivery"),
+        ],
+        string="Sync Type",
+        required=True,
+        index=True,
+    )
+    direction = fields.Selection(
+        [
+            ("inbound", "Inbound (SAP -> Odoo)"),
+            ("outbound", "Outbound (Odoo -> SAP)"),
+        ],
+        string="Direction",
+        required=True,
+        index=True,
+    )
     payload = fields.Text(
-        string='Payload (JSON)',
-        help='Full raw JSON payload exchanged between systems.'
+        string="Payload (JSON)", help="Full raw JSON payload exchanged between systems."
     )
-    status = fields.Selection([
-        ('pending', 'Pending'),
-        ('success', 'Success'),
-        ('failed', 'Failed'),
-    ], string='Status', default='pending', required=True, index=True)
+    status = fields.Selection(
+        [
+            ("pending", "Pending"),
+            ("success", "Success"),
+            ("failed", "Failed"),
+        ],
+        string="Status",
+        default="pending",
+        required=True,
+        index=True,
+    )
     error_message = fields.Text(
-        string='Error Message',
-        help='Detailed failure message or stack trace if the sync failed.'
+        string="Error Message",
+        help="Detailed failure message or stack trace if the sync failed.",
     )
     sync_date = fields.Datetime(
-        string='Sync Date',
+        string="Sync Date",
         default=fields.Datetime.now,
         required=True,
         index=True,
-        help='Timestamp when the sync transaction was recorded.'
+        help="Timestamp when the sync transaction was recorded.",
     )
 
     def action_retry_sync(self):
         """Reset failed synchronization logs back to pending status for re-execution."""
         for record in self:
-            if record.status != 'failed':
+            if record.status != "failed":
                 raise UserError(_("Only failed synchronization logs can be retried."))
-            record.write({
-                'status': 'pending',
-                'error_message': False,
-            })
+            record.write(
+                {
+                    "status": "pending",
+                    "error_message": False,
+                }
+            )
         return True
 ```
 

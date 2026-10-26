@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 import json
 import uuid
 from unittest.mock import MagicMock, patch
 
 import requests
 from odoo.tests.common import TransactionCase, tagged
+
 from ..constants import (
     CONFIG_PARAM_SAP_API_TOKEN,
     CONFIG_PARAM_SAP_BASE_URL,
@@ -35,21 +35,25 @@ class TestWebhookGoodsReceipt(TransactionCase):
             [("sap_partner_code", "=", "VEND-INDOMARCO")], limit=1
         )
         if not cls.vendor:
-            cls.vendor = cls.env["res.partner"].create({
-                "name": "PT Indomarco Prismatama",
-                "sap_partner_code": "VEND-INDOMARCO",
-                "supplier_rank": 1,
-            })
+            cls.vendor = cls.env["res.partner"].create(
+                {
+                    "name": "PT Indomarco Prismatama",
+                    "sap_partner_code": "VEND-INDOMARCO",
+                    "supplier_rank": 1,
+                }
+            )
 
         cls.product = cls.env["product.product"].search(
             [("sap_material_code", "=", "MAT-KOPI-01")], limit=1
         )
         if not cls.product:
-            cls.product = cls.env["product.product"].create({
-                "name": "Kopi Kapal Api Special Mix",
-                "sap_material_code": "MAT-KOPI-01",
-                "type": "product",
-            })
+            cls.product = cls.env["product.product"].create(
+                {
+                    "name": "Kopi Kapal Api Special Mix",
+                    "sap_material_code": "MAT-KOPI-01",
+                    "type": "product",
+                }
+            )
 
     def _create_assigned_picking(self, doc_num):
         payload = {
@@ -72,18 +76,20 @@ class TestWebhookGoodsReceipt(TransactionCase):
         # Mock SAP 200 response with sap_accounting_log
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.text = json.dumps({
-            "status": "SUCCESS",
-            "code": 200,
-            "message": "Goods Receipt posted into SAP General Ledger",
-            "sap_accounting_log": {
-                "journal_entry": "JE-SAP-2026-8801",
-                "posting_date": "2026-10-26",
-                "debit_account": "101.001 - Persediaan Barang Masuk",
-                "credit_account": "201.001 - Hutang Dagang Belum Difakturkan",
-                "financial_status": "POSTED",
-            },
-        })
+        mock_response.text = json.dumps(
+            {
+                "status": "SUCCESS",
+                "code": 200,
+                "message": "Goods Receipt posted into SAP General Ledger",
+                "sap_accounting_log": {
+                    "journal_entry": "JE-SAP-2026-8801",
+                    "posting_date": "2026-10-26",
+                    "debit_account": "101.001 - Persediaan Barang Masuk",
+                    "credit_account": "201.001 - Hutang Dagang Belum Difakturkan",
+                    "financial_status": "POSTED",
+                },
+            }
+        )
         mock_post.return_value = mock_response
 
         # Fulfill move line quantities and validate
@@ -104,7 +110,10 @@ class TestWebhookGoodsReceipt(TransactionCase):
 
         # Verify audit log entry
         log = self.env["sap.sync.log"].search(
-            [("sync_type", "=", SYNC_TYPE_INBOUND_PO), ("direction", "=", DIRECTION_OUTBOUND)],
+            [
+                ("sync_type", "=", SYNC_TYPE_INBOUND_PO),
+                ("direction", "=", DIRECTION_OUTBOUND),
+            ],
             order="id desc",
             limit=1,
         )
@@ -118,7 +127,9 @@ class TestWebhookGoodsReceipt(TransactionCase):
         doc_num = f"PO-TEST-WHK-FAIL-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_assigned_picking(doc_num)
 
-        mock_post.side_effect = requests.exceptions.ConnectionError("SAP server connection refused")
+        mock_post.side_effect = requests.exceptions.ConnectionError(
+            "SAP server connection refused"
+        )
 
         for line in picking.move_line_ids:
             line.quantity = line.quantity_product_uom or 10
@@ -130,7 +141,10 @@ class TestWebhookGoodsReceipt(TransactionCase):
 
         # Verify failed audit log
         log = self.env["sap.sync.log"].search(
-            [("sync_type", "=", SYNC_TYPE_INBOUND_PO), ("direction", "=", DIRECTION_OUTBOUND)],
+            [
+                ("sync_type", "=", SYNC_TYPE_INBOUND_PO),
+                ("direction", "=", DIRECTION_OUTBOUND),
+            ],
             order="id desc",
             limit=1,
         )
@@ -154,11 +168,13 @@ class TestWebhookGoodsReceipt(TransactionCase):
         # Step 2: Retry succeeds
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.text = json.dumps({
-            "status": "SUCCESS",
-            "code": 200,
-            "message": "Retry successful",
-        })
+        mock_response.text = json.dumps(
+            {
+                "status": "SUCCESS",
+                "code": 200,
+                "message": "Retry successful",
+            }
+        )
         mock_post.side_effect = None
         mock_post.return_value = mock_response
 

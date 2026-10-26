@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
+
 from ..constants import (
     ALLOWED_SYNC_TYPES,
     SAP_DIRECTION_SELECTION,

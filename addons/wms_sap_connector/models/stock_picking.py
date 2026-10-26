@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 import json
 import logging
 import uuid
 from datetime import datetime, time
 
 import requests
-
 from odoo import api, fields, models
+
 from ..constants import (
     AUTH_BEARER_PREFIX,
     CONFIG_PARAM_SAP_API_TOKEN,
@@ -14,7 +13,6 @@ from ..constants import (
     DIRECTION_OUTBOUND,
     HTTP_HEADER_API_KEY,
     HTTP_HEADER_AUTHORIZATION,
-    PICKING_STATE_ASSIGNED,
     PICKING_STATE_CANCEL,
     PICKING_STATE_CONFIRMED,
     PICKING_TYPE_CODE_INCOMING,
@@ -109,7 +107,9 @@ class StockPicking(models.Model):
             if not warehouse_code:
                 warehouse_code = picking.company_id.name or "DEFAULT_WH"
 
-            received_date = (picking.date_done or fields.Datetime.now()).strftime("%Y-%m-%dT%H:%M:%SZ")
+            received_date = (picking.date_done or fields.Datetime.now()).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
 
             payload = {
                 "sap_doc_number": picking.sap_doc_number,
@@ -123,15 +123,17 @@ class StockPicking(models.Model):
                 err_msg = "SAP Base URL not configured in system settings."
                 _logger.warning("Picking %s webhook aborted: %s", picking.name, err_msg)
                 picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
-                picking.env["sap.sync.log"].sudo().create({
-                    "name": sync_ref,
-                    "sync_type": SYNC_TYPE_INBOUND_PO,
-                    "direction": DIRECTION_OUTBOUND,
-                    "payload": payload_str,
-                    "status": SYNC_STATUS_FAILED,
-                    "error_message": err_msg,
-                    "sync_date": fields.Datetime.now(),
-                })
+                picking.env["sap.sync.log"].sudo().create(
+                    {
+                        "name": sync_ref,
+                        "sync_type": SYNC_TYPE_INBOUND_PO,
+                        "direction": DIRECTION_OUTBOUND,
+                        "payload": payload_str,
+                        "status": SYNC_STATUS_FAILED,
+                        "error_message": err_msg,
+                        "sync_date": fields.Datetime.now(),
+                    }
+                )
                 continue
 
             endpoint_url = sap_base_url.rstrip("/") + SAP_ENDPOINT_GOODS_RECEIPT
@@ -139,7 +141,9 @@ class StockPicking(models.Model):
                 "Content-Type": "application/json",
             }
             if sap_api_token:
-                headers[HTTP_HEADER_AUTHORIZATION] = f"{AUTH_BEARER_PREFIX}{sap_api_token}"
+                headers[HTTP_HEADER_AUTHORIZATION] = (
+                    f"{AUTH_BEARER_PREFIX}{sap_api_token}"
+                )
                 headers[HTTP_HEADER_API_KEY] = sap_api_token
 
             try:
@@ -151,22 +155,52 @@ class StockPicking(models.Model):
                 )
                 resp_text = response.text
                 if response.status_code in (200, 201):
-                    _logger.info("Goods Receipt webhook success for %s: %s", picking.sap_doc_number, resp_text)
+                    _logger.info(
+                        "Goods Receipt webhook success for %s: %s",
+                        picking.sap_doc_number,
+                        resp_text,
+                    )
                     picking.sudo().write({"sap_sync_status": SYNC_STATUS_SYNCED})
-                    picking.env["sap.sync.log"].sudo().create({
-                        "name": sync_ref,
-                        "sync_type": SYNC_TYPE_INBOUND_PO,
-                        "direction": DIRECTION_OUTBOUND,
-                        "payload": resp_text,
-                        "status": SYNC_STATUS_SUCCESS,
-                        "error_message": False,
-                        "sync_date": fields.Datetime.now(),
-                    })
+                    picking.env["sap.sync.log"].sudo().create(
+                        {
+                            "name": sync_ref,
+                            "sync_type": SYNC_TYPE_INBOUND_PO,
+                            "direction": DIRECTION_OUTBOUND,
+                            "payload": resp_text,
+                            "status": SYNC_STATUS_SUCCESS,
+                            "error_message": False,
+                            "sync_date": fields.Datetime.now(),
+                        }
+                    )
                 else:
                     err_msg = f"HTTP {response.status_code}: {resp_text}"
-                    _logger.warning("Goods Receipt webhook failed for %s: %s", picking.sap_doc_number, err_msg)
+                    _logger.warning(
+                        "Goods Receipt webhook failed for %s: %s",
+                        picking.sap_doc_number,
+                        err_msg,
+                    )
                     picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
-                    picking.env["sap.sync.log"].sudo().create({
+                    picking.env["sap.sync.log"].sudo().create(
+                        {
+                            "name": sync_ref,
+                            "sync_type": SYNC_TYPE_INBOUND_PO,
+                            "direction": DIRECTION_OUTBOUND,
+                            "payload": payload_str,
+                            "status": SYNC_STATUS_FAILED,
+                            "error_message": err_msg,
+                            "sync_date": fields.Datetime.now(),
+                        }
+                    )
+            except Exception as exc:
+                err_msg = f"Connection error: {exc!s}"
+                _logger.exception(
+                    "Failed to send Goods Receipt webhook for %s: %s",
+                    picking.sap_doc_number,
+                    err_msg,
+                )
+                picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
+                picking.env["sap.sync.log"].sudo().create(
+                    {
                         "name": sync_ref,
                         "sync_type": SYNC_TYPE_INBOUND_PO,
                         "direction": DIRECTION_OUTBOUND,
@@ -174,20 +208,8 @@ class StockPicking(models.Model):
                         "status": SYNC_STATUS_FAILED,
                         "error_message": err_msg,
                         "sync_date": fields.Datetime.now(),
-                    })
-            except Exception as exc:
-                err_msg = f"Connection error: {str(exc)}"
-                _logger.exception("Failed to send Goods Receipt webhook for %s: %s", picking.sap_doc_number, err_msg)
-                picking.sudo().write({"sap_sync_status": SYNC_STATUS_FAILED})
-                picking.env["sap.sync.log"].sudo().create({
-                    "name": sync_ref,
-                    "sync_type": SYNC_TYPE_INBOUND_PO,
-                    "direction": DIRECTION_OUTBOUND,
-                    "payload": payload_str,
-                    "status": SYNC_STATUS_FAILED,
-                    "error_message": err_msg,
-                    "sync_date": fields.Datetime.now(),
-                })
+                    }
+                )
 
     def action_send_sap_goods_receipt_webhook(self):
         """Action button to manually trigger or retry Goods Receipt webhook transmission."""
@@ -199,7 +221,10 @@ class StockPicking(models.Model):
         """Overrides _action_done to trigger Goods Receipt webhook for completed incoming pickings."""
         res = super()._action_done()
         for picking in self:
-            if picking.picking_type_id.code == PICKING_TYPE_CODE_INCOMING and picking.sap_doc_number:
+            if (
+                picking.picking_type_id.code == PICKING_TYPE_CODE_INCOMING
+                and picking.sap_doc_number
+            ):
                 picking._send_sap_goods_receipt_webhook()
         return res
 
@@ -224,11 +249,23 @@ class StockPicking(models.Model):
         vendor_code = payload_dict.get("vendor_code")
         items = payload_dict.get("items")
 
-        if not sap_doc_number or not isinstance(sap_doc_number, str) or not sap_doc_number.strip():
-            raise ValueError("Bad Request: Missing or invalid mandatory field 'sap_doc_number'")
+        if (
+            not sap_doc_number
+            or not isinstance(sap_doc_number, str)
+            or not sap_doc_number.strip()
+        ):
+            raise ValueError(
+                "Bad Request: Missing or invalid mandatory field 'sap_doc_number'"
+            )
 
-        if not vendor_code or not isinstance(vendor_code, str) or not vendor_code.strip():
-            raise ValueError("Bad Request: Missing or invalid mandatory field 'vendor_code'")
+        if (
+            not vendor_code
+            or not isinstance(vendor_code, str)
+            or not vendor_code.strip()
+        ):
+            raise ValueError(
+                "Bad Request: Missing or invalid mandatory field 'vendor_code'"
+            )
 
         if not isinstance(items, list) or len(items) == 0:
             raise ValueError("Bad Request: Missing or empty 'items' array")
@@ -238,22 +275,33 @@ class StockPicking(models.Model):
 
         # Idempotency check
         existing_picking = self.search(
-            [("sap_doc_number", "=", sap_doc_number), ("state", "!=", PICKING_STATE_CANCEL)],
+            [
+                ("sap_doc_number", "=", sap_doc_number),
+                ("state", "!=", PICKING_STATE_CANCEL),
+            ],
             limit=1,
         )
         if existing_picking:
             return existing_picking, False
 
         # Vendor resolution
-        vendor = self.env["res.partner"].sudo().search(
-            [("sap_partner_code", "=", vendor_code_clean)],
-            limit=1,
+        vendor = (
+            self.env["res.partner"]
+            .sudo()
+            .search(
+                [("sap_partner_code", "=", vendor_code_clean)],
+                limit=1,
+            )
         )
         if not vendor:
-            raise ValueError(f"Bad Request: Vendor with SAP partner code '{vendor_code_clean}' not found")
+            raise ValueError(
+                f"Bad Request: Vendor with SAP partner code '{vendor_code_clean}' not found"
+            )
 
         # Warehouse and picking type resolution
-        warehouse_code = payload_dict.get("warehouse_code") or payload_dict.get("plant_code")
+        warehouse_code = payload_dict.get("warehouse_code") or payload_dict.get(
+            "plant_code"
+        )
         picking_type_obj = self.env["stock.picking.type"].sudo()
         warehouse_obj = self.env["stock.warehouse"].sudo()
 
@@ -266,7 +314,10 @@ class StockPicking(models.Model):
             )
             if wh:
                 picking_type = picking_type_obj.search(
-                    [("warehouse_id", "=", wh.id), ("code", "=", PICKING_TYPE_CODE_INCOMING)],
+                    [
+                        ("warehouse_id", "=", wh.id),
+                        ("code", "=", PICKING_TYPE_CODE_INCOMING),
+                    ],
                     limit=1,
                 )
 
@@ -275,7 +326,10 @@ class StockPicking(models.Model):
             wh = warehouse_obj.search([("company_id", "=", company.id)], limit=1)
             if wh:
                 picking_type = picking_type_obj.search(
-                    [("warehouse_id", "=", wh.id), ("code", "=", PICKING_TYPE_CODE_INCOMING)],
+                    [
+                        ("warehouse_id", "=", wh.id),
+                        ("code", "=", PICKING_TYPE_CODE_INCOMING),
+                    ],
                     limit=1,
                 )
 
@@ -289,16 +343,29 @@ class StockPicking(models.Model):
             )
 
         if not picking_type:
-            raise ValueError("Incoming operation type (stock.picking.type) not configured in the system.")
+            raise ValueError(
+                "Incoming operation type (stock.picking.type) not configured in the system."
+            )
 
         # Source supplier location resolution
-        supplier_loc = self.env.ref("stock.stock_location_suppliers", raise_if_not_found=False)
+        supplier_loc = self.env.ref(
+            "stock.stock_location_suppliers", raise_if_not_found=False
+        )
         if not supplier_loc:
-            supplier_loc = self.env["stock.location"].sudo().search(
-                [("usage", "=", "supplier"), ("company_id", "in", (picking_type.company_id.id, False))],
-                limit=1,
+            supplier_loc = (
+                self.env["stock.location"]
+                .sudo()
+                .search(
+                    [
+                        ("usage", "=", "supplier"),
+                        ("company_id", "in", (picking_type.company_id.id, False)),
+                    ],
+                    limit=1,
+                )
             )
-        location_id = supplier_loc.id if supplier_loc else picking_type.default_location_src_id.id
+        location_id = (
+            supplier_loc.id if supplier_loc else picking_type.default_location_src_id.id
+        )
         if not location_id:
             raise ValueError("Supplier source location not configured.")
 
@@ -307,9 +374,16 @@ class StockPicking(models.Model):
         if not dest_location_id and picking_type.warehouse_id:
             dest_location_id = picking_type.warehouse_id.lot_stock_id.id
         if not dest_location_id:
-            dest_location = self.env["stock.location"].sudo().search(
-                [("usage", "=", "internal"), ("company_id", "in", (picking_type.company_id.id, False))],
-                limit=1,
+            dest_location = (
+                self.env["stock.location"]
+                .sudo()
+                .search(
+                    [
+                        ("usage", "=", "internal"),
+                        ("company_id", "in", (picking_type.company_id.id, False)),
+                    ],
+                    limit=1,
+                )
             )
             dest_location_id = dest_location.id if dest_location else False
         if not dest_location_id:
@@ -323,7 +397,9 @@ class StockPicking(models.Model):
                 raise ValueError(f"Bad Request: Item #{idx + 1} must be a JSON object")
             code = item.get("sap_material_code")
             if not code or not str(code).strip():
-                raise ValueError(f"Bad Request: Item #{idx + 1} missing mandatory field 'sap_material_code'")
+                raise ValueError(
+                    f"Bad Request: Item #{idx + 1} missing mandatory field 'sap_material_code'"
+                )
             mat_codes.add(str(code).strip())
 
         products = product_obj.search([("sap_material_code", "in", list(mat_codes))])
@@ -335,18 +411,24 @@ class StockPicking(models.Model):
             code = str(item.get("sap_material_code")).strip()
             product = prod_map.get(code)
             if not product:
-                raise ValueError(f"Bad Request: Material with SAP material code '{code}' not found")
+                raise ValueError(
+                    f"Bad Request: Material with SAP material code '{code}' not found"
+                )
 
             qty = item.get("qty")
             if qty is None:
-                raise ValueError(f"Bad Request: Item #{idx + 1} missing mandatory field 'qty'")
+                raise ValueError(
+                    f"Bad Request: Item #{idx + 1} missing mandatory field 'qty'"
+                )
 
             try:
                 qty_val = float(qty)
                 if qty_val <= 0:
                     raise ValueError()
             except (ValueError, TypeError):
-                raise ValueError(f"Bad Request: Item #{idx + 1} ({code}) 'qty' must be greater than 0")
+                raise ValueError(
+                    f"Bad Request: Item #{idx + 1} ({code}) 'qty' must be greater than 0"
+                )
 
             target_uom = product.uom_id
             uom_str = item.get("uom")
@@ -369,11 +451,13 @@ class StockPicking(models.Model):
                         product.uom_id.name,
                     )
 
-            validated_moves_data.append({
-                "product": product,
-                "qty": qty_val,
-                "uom": target_uom,
-            })
+            validated_moves_data.append(
+                {
+                    "product": product,
+                    "qty": qty_val,
+                    "uom": target_uom,
+                }
+            )
 
         # Scheduled date resolution
         scheduled_date = fields.Datetime.now()

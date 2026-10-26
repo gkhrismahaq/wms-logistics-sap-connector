@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import base64
 import json
 import logging
@@ -7,6 +6,7 @@ from datetime import datetime
 
 from odoo import fields, http
 from odoo.http import request
+
 from ..constants import (
     ALLOWED_SYNC_TYPES,
     AUTH_BEARER_PREFIX,
@@ -47,7 +47,7 @@ class SapBaseController(http.Controller):
         if not auth_token:
             auth_header = request.httprequest.headers.get(HTTP_HEADER_AUTHORIZATION, "")
             if auth_header.startswith(AUTH_BEARER_PREFIX):
-                auth_token = auth_header[len(AUTH_BEARER_PREFIX):].strip()
+                auth_token = auth_header[len(AUTH_BEARER_PREFIX) :].strip()
             elif auth_header:
                 auth_token = auth_header.strip()
 
@@ -93,7 +93,9 @@ class SapBaseController(http.Controller):
                 }
             )
         except Exception as log_err:
-            _logger.error("Failed to write to sap.sync.log for %s: %s", sync_ref, str(log_err))
+            _logger.error(
+                "Failed to write to sap.sync.log for %s: %s", sync_ref, str(log_err)
+            )
 
     def _extract_and_authenticate_payload(self, prefix, sync_type):
         """Extracts, authenticates, and parses incoming JSON payload.
@@ -115,7 +117,12 @@ class SapBaseController(http.Controller):
                 error_message=auth_error.get("message"),
                 direction=DIRECTION_INBOUND,
             )
-            return sync_ref, payload_str, None, request.make_json_response(auth_error, status=401)
+            return (
+                sync_ref,
+                payload_str,
+                None,
+                request.make_json_response(auth_error, status=401),
+            )
 
         try:
             body = request.httprequest.get_json(silent=True)
@@ -179,15 +186,19 @@ class SapMasterDataController(SapBaseController):
                 try:
                     vals["weight"] = float(item["weight"])
                 except (ValueError, TypeError):
-                    _logger.warning("Invalid weight value for material %s", sap_material_code)
+                    _logger.warning(
+                        "Invalid weight value for material %s", sap_material_code
+                    )
 
             if "volume" in item and item["volume"] is not None:
                 try:
                     vals["volume"] = float(item["volume"])
                 except (ValueError, TypeError):
-                    _logger.warning("Invalid volume value for material %s", sap_material_code)
+                    _logger.warning(
+                        "Invalid volume value for material %s", sap_material_code
+                    )
 
-            if "barcode" in item and item["barcode"]:
+            if item.get("barcode"):
                 vals["barcode"] = str(item["barcode"]).strip()
 
             raw_img = item.get("image_base64") or item.get("image_1920")
@@ -240,13 +251,13 @@ class SapMasterDataController(SapBaseController):
                 "name": str(name).strip(),
             }
 
-            if "street" in item and item["street"]:
+            if item.get("street"):
                 vals["street"] = str(item["street"]).strip()
 
-            if "city" in item and item["city"]:
+            if item.get("city"):
                 vals["city"] = str(item["city"]).strip()
 
-            if "phone" in item and item["phone"]:
+            if item.get("phone"):
                 vals["phone"] = str(item["phone"]).strip()
 
             partner_type = str(item.get("partner_type", "")).strip().lower()
@@ -268,12 +279,16 @@ class SapMasterDataController(SapBaseController):
 
         return processed_count
 
-    @http.route("/api/sap/master", type="http", auth="public", methods=["POST"], csrf=False)
+    @http.route(
+        "/api/sap/master", type="http", auth="public", methods=["POST"], csrf=False
+    )
     def receive_sap_master(self, **kwargs):
         """Public REST API endpoint to receive master data from SAP."""
-        sync_ref, payload_str, body, error_response = self._extract_and_authenticate_payload(
-            prefix=REF_PREFIX_MASTER_DATA,
-            sync_type=SYNC_TYPE_MASTER_PRODUCT,
+        sync_ref, payload_str, body, error_response = (
+            self._extract_and_authenticate_payload(
+                prefix=REF_PREFIX_MASTER_DATA,
+                sync_type=SYNC_TYPE_MASTER_PRODUCT,
+            )
         )
         if error_response:
             return error_response
@@ -312,7 +327,9 @@ class SapMasterDataController(SapBaseController):
             elif master_type == MASTER_TYPE_PARTNER:
                 processed_count = self._process_partner_master(data_list)
             else:
-                raise ValueError(f"Bad Request: Unsupported master_type '{master_type}'")
+                raise ValueError(
+                    f"Bad Request: Unsupported master_type '{master_type}'"
+                )
 
             self._log_transaction(
                 sync_ref=sync_ref,
@@ -335,7 +352,9 @@ class SapMasterDataController(SapBaseController):
 
         except Exception as exc:
             request.env.cr.rollback()
-            _logger.exception("Error processing master data for %s: %s", sync_ref, str(exc))
+            _logger.exception(
+                "Error processing master data for %s: %s", sync_ref, str(exc)
+            )
             err_msg = str(exc)
             self._log_transaction(
                 sync_ref=sync_ref,
@@ -368,9 +387,11 @@ class SapInboundController(SapBaseController):
     )
     def receive_sap_inbound_po(self, **kwargs):
         """Public REST API endpoint to receive Purchase Orders from SAP."""
-        sync_ref, payload_str, body, error_response = self._extract_and_authenticate_payload(
-            prefix=REF_PREFIX_INBOUND_PO,
-            sync_type=SYNC_TYPE_INBOUND_PO,
+        sync_ref, payload_str, body, error_response = (
+            self._extract_and_authenticate_payload(
+                prefix=REF_PREFIX_INBOUND_PO,
+                sync_type=SYNC_TYPE_INBOUND_PO,
+            )
         )
         if error_response:
             return error_response

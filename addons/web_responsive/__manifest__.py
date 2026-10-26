@@ -12,8 +12,7 @@
     "version": "17.0.1.1.11",
     "category": "Website",
     "website": "https://github.com/OCA/web",
-    "author": "LasLabs, Tecnativa, ITerra, Onestein, "
-    "Odoo Community Association (OCA)",
+    "author": "LasLabs, Tecnativa, ITerra, Onestein, Odoo Community Association (OCA)",
     "license": "LGPL-3",
     "installable": True,
     "depends": ["web_tour", "mail"],

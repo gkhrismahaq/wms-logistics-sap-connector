@@ -57,9 +57,13 @@ Sesuai spesifikasi arsitektur Two-Tier WMS ([tsd.md](../../docs/tsd.md) — Bagi
 def _action_done(self):
     res = super()._action_done()
     for picking in self:
-        if picking.picking_type_id.code == PICKING_TYPE_CODE_INCOMING and picking.sap_doc_number:
+        if (
+            picking.picking_type_id.code == PICKING_TYPE_CODE_INCOMING
+            and picking.sap_doc_number
+        ):
             picking._send_sap_goods_receipt_webhook()
     return res
+
 
 def action_send_sap_goods_receipt_webhook(self):
     """Manual trigger to re-send Goods Receipt webhook to SAP."""

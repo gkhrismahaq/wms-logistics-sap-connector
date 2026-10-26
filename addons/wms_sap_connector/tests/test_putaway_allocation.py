@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 import uuid
+
 from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 
@@ -25,11 +25,13 @@ class TestPutawayAllocation(TransactionCase):
             [("sap_partner_code", "=", "VEND-INDOMARCO")], limit=1
         )
         if not cls.vendor:
-            cls.vendor = cls.env["res.partner"].create({
-                "name": "PT Indomarco Prismatama",
-                "sap_partner_code": "VEND-INDOMARCO",
-                "supplier_rank": 1,
-            })
+            cls.vendor = cls.env["res.partner"].create(
+                {
+                    "name": "PT Indomarco Prismatama",
+                    "sap_partner_code": "VEND-INDOMARCO",
+                    "supplier_rank": 1,
+                }
+            )
 
         cls.product_kopi = cls.env["product.product"].search(
             [("sap_material_code", "=", "MAT-KOPI-01")], limit=1
@@ -41,28 +43,34 @@ class TestPutawayAllocation(TransactionCase):
             [("sap_material_code", "=", "MAT-BERAS-05")], limit=1
         )
         if not cls.product_unmapped:
-            cls.product_unmapped = cls.env["product.product"].create({
-                "name": "Beras Premium Maknyuss 5kg",
-                "sap_material_code": "MAT-BERAS-05",
-                "type": "product",
-            })
+            cls.product_unmapped = cls.env["product.product"].create(
+                {
+                    "name": "Beras Premium Maknyuss 5kg",
+                    "sap_material_code": "MAT-BERAS-05",
+                    "type": "product",
+                }
+            )
 
         # Test users for security validation
         group_operator = cls.env.ref("wms_sap_connector.group_wms_operator")
         group_manager = cls.env.ref("wms_sap_connector.group_wms_manager")
 
-        cls.user_operator = cls.env["res.users"].create({
-            "name": "WMS Test Operator",
-            "login": f"test_operator_{uuid.uuid4().hex[:6]}",
-            "email": "operator_test@example.com",
-            "groups_id": [(6, 0, [group_operator.id])],
-        })
-        cls.user_manager = cls.env["res.users"].create({
-            "name": "WMS Test Manager",
-            "login": f"test_manager_{uuid.uuid4().hex[:6]}",
-            "email": "manager_test@example.com",
-            "groups_id": [(6, 0, [group_manager.id])],
-        })
+        cls.user_operator = cls.env["res.users"].create(
+            {
+                "name": "WMS Test Operator",
+                "login": f"test_operator_{uuid.uuid4().hex[:6]}",
+                "email": "operator_test@example.com",
+                "groups_id": [(6, 0, [group_operator.id])],
+            }
+        )
+        cls.user_manager = cls.env["res.users"].create(
+            {
+                "name": "WMS Test Manager",
+                "login": f"test_manager_{uuid.uuid4().hex[:6]}",
+                "email": "manager_test@example.com",
+                "groups_id": [(6, 0, [group_manager.id])],
+            }
+        )
 
     def test_01_putaway_allocation_mapped_products(self):
         """REQ-INB-06: Mapped products must automatically allocate destination shelves."""
@@ -113,24 +121,34 @@ class TestPutawayAllocation(TransactionCase):
     def test_03_security_putaway_rule_access(self):
         """REQ-INB-07: Operator has read-only access while Manager has full CRUD on putaway rules."""
         # 1. Operator can read
-        rules_operator = self.env["stock.putaway.rule"].with_user(self.user_operator).search([])
+        rules_operator = (
+            self.env["stock.putaway.rule"].with_user(self.user_operator).search([])
+        )
         self.assertTrue(len(rules_operator) >= 1)
 
         # 2. Operator cannot create
         with self.assertRaises(AccessError):
-            self.env["stock.putaway.rule"].with_user(self.user_operator).create({
-                "product_id": self.product_kopi.id,
-                "location_in_id": self.stock_location.id,
-                "location_out_id": self.shelf2_location.id,
-            })
+            self.env["stock.putaway.rule"].with_user(self.user_operator).create(
+                {
+                    "product_id": self.product_kopi.id,
+                    "location_in_id": self.stock_location.id,
+                    "location_out_id": self.shelf2_location.id,
+                }
+            )
 
         # 3. Manager can create, write, and unlink
-        rule_manager = self.env["stock.putaway.rule"].with_user(self.user_manager).create({
-            "product_id": self.product_kopi.id,
-            "location_in_id": self.stock_location.id,
-            "location_out_id": self.shelf2_location.id,
-            "sequence": 99,
-        })
+        rule_manager = (
+            self.env["stock.putaway.rule"]
+            .with_user(self.user_manager)
+            .create(
+                {
+                    "product_id": self.product_kopi.id,
+                    "location_in_id": self.stock_location.id,
+                    "location_out_id": self.shelf2_location.id,
+                    "sequence": 99,
+                }
+            )
+        )
         self.assertTrue(rule_manager.id)
 
         rule_manager.write({"sequence": 98})

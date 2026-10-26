@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
 import json
 import uuid
+
 from odoo.tests.common import HttpCase, tagged
+
 from ..constants import (
     CONFIG_PARAM_SAP_API_TOKEN,
     HTTP_HEADER_API_KEY,
@@ -17,8 +18,8 @@ class TestInboundPoApi(HttpCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        configured_token = cls.env["ir.config_parameter"].sudo().get_param(
-            CONFIG_PARAM_SAP_API_TOKEN
+        configured_token = (
+            cls.env["ir.config_parameter"].sudo().get_param(CONFIG_PARAM_SAP_API_TOKEN)
         )
         if not configured_token:
             configured_token = "secret_sap_token_123"
@@ -27,25 +28,41 @@ class TestInboundPoApi(HttpCase):
             )
         cls.token = configured_token
 
-        cls.vendor = cls.env["res.partner"].sudo().search(
-            [("sap_partner_code", "=", "VEND-INDOMARCO")], limit=1
+        cls.vendor = (
+            cls.env["res.partner"]
+            .sudo()
+            .search([("sap_partner_code", "=", "VEND-INDOMARCO")], limit=1)
         )
         if not cls.vendor:
-            cls.vendor = cls.env["res.partner"].sudo().create({
-                "name": "Test Vendor PT",
-                "sap_partner_code": "VEND-INDOMARCO",
-                "supplier_rank": 1,
-            })
+            cls.vendor = (
+                cls.env["res.partner"]
+                .sudo()
+                .create(
+                    {
+                        "name": "Test Vendor PT",
+                        "sap_partner_code": "VEND-INDOMARCO",
+                        "supplier_rank": 1,
+                    }
+                )
+            )
 
-        cls.product = cls.env["product.product"].sudo().search(
-            [("sap_material_code", "=", "MAT-KOPI-01")], limit=1
+        cls.product = (
+            cls.env["product.product"]
+            .sudo()
+            .search([("sap_material_code", "=", "MAT-KOPI-01")], limit=1)
         )
         if not cls.product:
-            cls.product = cls.env["product.product"].sudo().create({
-                "name": "Test Inbound Product",
-                "sap_material_code": "MAT-KOPI-01",
-                "type": "product",
-            })
+            cls.product = (
+                cls.env["product.product"]
+                .sudo()
+                .create(
+                    {
+                        "name": "Test Inbound Product",
+                        "sap_material_code": "MAT-KOPI-01",
+                        "type": "product",
+                    }
+                )
+            )
         cls.cr.commit()
 
     def test_01_unauthorized_access(self):
@@ -87,7 +104,9 @@ class TestInboundPoApi(HttpCase):
         payload = {
             "sap_doc_number": "PO-TEST-NOVENDOR-01",
             "vendor_code": "VEND-NONEXISTENT-999",
-            "items": [{"sap_material_code": self.product.sap_material_code, "qty": 10.0}],
+            "items": [
+                {"sap_material_code": self.product.sap_material_code, "qty": 10.0}
+            ],
         }
         response = self.url_open(
             "/api/sap/inbound/po",
@@ -181,7 +200,10 @@ class TestInboundPoApi(HttpCase):
         with self.registry.cursor() as new_cr:
             env = self.env(cr=new_cr)
             sync_log = env["sap.sync.log"].search(
-                [("sync_type", "=", SYNC_TYPE_INBOUND_PO), ("status", "=", SYNC_STATUS_SUCCESS)],
+                [
+                    ("sync_type", "=", SYNC_TYPE_INBOUND_PO),
+                    ("status", "=", SYNC_STATUS_SUCCESS),
+                ],
                 order="id desc",
                 limit=1,
             )

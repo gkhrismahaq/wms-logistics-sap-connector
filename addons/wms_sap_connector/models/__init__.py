@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*-
-from . import sap_sync_log
-from . import res_config_settings
-from . import product_template
-from . import res_partner
-from . import stock_location
-from . import stock_picking
+from . import (
+    product_template,
+    res_config_settings,
+    res_partner,
+    sap_sync_log,
+    stock_location,
+    stock_picking,
+)

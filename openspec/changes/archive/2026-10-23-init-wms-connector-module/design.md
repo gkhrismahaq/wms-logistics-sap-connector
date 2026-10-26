@@ -46,22 +46,22 @@ Rancangan konten file deskriptor `addons/wms_sap_connector/__manifest__.py`:
 ```python
 # -*- coding: utf-8 -*-
 {
-    'name': 'WMS Logistics SAP Connector',
-    'version': '17.0.1.0.0',
-    'category': 'Inventory/Logistics',
-    'summary': 'Odoo 17 Two-Tier WMS & Logistics Execution System integrated with SAP Upper Line',
-    'author': 'Gilang Khrismahaq',
-    'website': 'https://github.com/gilangkhrismahaq/wms-logistics-sap-connector',
-    'license': 'LGPL-3',
-    'depends': [
-        'base',
-        'stock',
-        'delivery',
+    "name": "WMS Logistics SAP Connector",
+    "version": "17.0.1.0.0",
+    "category": "Inventory/Logistics",
+    "summary": "Odoo 17 Two-Tier WMS & Logistics Execution System integrated with SAP Upper Line",
+    "author": "Gilang Khrismahaq",
+    "website": "https://github.com/gilangkhrismahaq/wms-logistics-sap-connector",
+    "license": "LGPL-3",
+    "depends": [
+        "base",
+        "stock",
+        "delivery",
     ],
-    'data': [],
-    'installable': True,
-    'application': True,
-    'auto_install': False,
+    "data": [],
+    "installable": True,
+    "application": True,
+    "auto_install": False,
 }
 ```
 
