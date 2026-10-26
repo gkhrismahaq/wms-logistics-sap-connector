@@ -79,3 +79,14 @@ PICKING_STATE_CANCEL = "cancel"
 
 ERROR_UNAUTHORIZED = "Unauthorized: Invalid or missing API token"
 ERROR_INVALID_JSON = "Bad Request: Invalid JSON body"
+
+VEHICLE_STATE_AVAILABLE = "available"
+VEHICLE_STATE_ON_DELIVERY = "on_delivery"
+VEHICLE_STATE_MAINTENANCE = "maintenance"
+
+VEHICLE_STATE_SELECTION = [
+    (VEHICLE_STATE_AVAILABLE, "Tersedia / Siap Jalan"),
+    (VEHICLE_STATE_ON_DELIVERY, "Sedang Bertugas / Pengantaran"),
+    (VEHICLE_STATE_MAINTENANCE, "Perawatan / Bengkel"),
+]
+

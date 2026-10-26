@@ -5,4 +5,5 @@ from . import (
     sap_sync_log,
     stock_location,
     stock_picking,
+    wms_vehicle,
 )
