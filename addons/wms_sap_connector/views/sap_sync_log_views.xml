@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Tree / List View -->
     <record id="view_sap_sync_log_tree" model="ir.ui.view">
         <field name="name">sap.sync.log.tree</field>
         <field name="model">sap.sync.log</field>
@@ -22,7 +21,6 @@
         </field>
     </record>
 
-    <!-- Form View -->
     <record id="view_sap_sync_log_form" model="ir.ui.view">
         <field name="name">sap.sync.log.form</field>
         <field name="model">sap.sync.log</field>
@@ -62,7 +60,6 @@
         </field>
     </record>
 
-    <!-- Search View -->
     <record id="view_sap_sync_log_search" model="ir.ui.view">
         <field name="name">sap.sync.log.search</field>
         <field name="model">sap.sync.log</field>
@@ -88,7 +85,6 @@
         </field>
     </record>
 
-    <!-- Window Action -->
     <record id="action_sap_sync_log" model="ir.actions.act_window">
         <field name="name">SAP Integration Logs</field>
         <field name="res_model">sap.sync.log</field>
@@ -96,15 +92,14 @@
         <field name="search_view_id" ref="view_sap_sync_log_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Belum ada rekaman log integrasi SAP.
+                No SAP integration logs recorded yet.
             </p>
             <p>
-                Log transaksi pertukaran data dua arah antara SAP dan Odoo akan tercatat secara otomatis di sini.
+                Two-way data exchange logs between SAP and Odoo will be recorded here automatically.
             </p>
         </field>
     </record>
 
-    <!-- Menus -->
     <menuitem id="menu_wms_sap_root" name="SAP Integration"
               parent="stock.menu_stock_root" sequence="90"/>
     <menuitem id="menu_sap_sync_log" name="Sync Logs"

@@ -1,0 +1,77 @@
+# -*- coding: utf-8 -*-
+
+CONFIG_PARAM_SAP_BASE_URL = "wms_sap_connector.sap_base_url"
+CONFIG_PARAM_SAP_API_TOKEN = "wms_sap_connector.sap_api_token"
+
+HTTP_HEADER_API_KEY = "X-Odoo-API-Key"
+HTTP_HEADER_AUTHORIZATION = "Authorization"
+AUTH_BEARER_PREFIX = "Bearer "
+
+SYNC_STATUS_DRAFT = "draft"
+SYNC_STATUS_PENDING = "pending"
+SYNC_STATUS_SYNCED = "synced"
+SYNC_STATUS_SUCCESS = "success"
+SYNC_STATUS_FAILED = "failed"
+
+SAP_PICKING_SYNC_STATUS_SELECTION = [
+    (SYNC_STATUS_DRAFT, "Draft / Not Synced"),
+    (SYNC_STATUS_PENDING, "Pending Sync"),
+    (SYNC_STATUS_SYNCED, "Synced to SAP"),
+    (SYNC_STATUS_FAILED, "Sync Failed"),
+]
+
+SAP_SYNC_LOG_STATUS_SELECTION = [
+    (SYNC_STATUS_PENDING, "Pending"),
+    (SYNC_STATUS_SUCCESS, "Success"),
+    (SYNC_STATUS_FAILED, "Failed"),
+]
+
+SYNC_TYPE_MASTER_PRODUCT = "master_product"
+SYNC_TYPE_MASTER_PARTNER = "master_partner"
+SYNC_TYPE_INBOUND_PO = "inbound_po"
+SYNC_TYPE_OUTBOUND_SO = "outbound_so"
+
+SAP_SYNC_TYPE_SELECTION = [
+    (SYNC_TYPE_MASTER_PRODUCT, "Master Product / Material"),
+    (SYNC_TYPE_MASTER_PARTNER, "Master Partner / Vendor / Customer"),
+    (SYNC_TYPE_INBOUND_PO, "Inbound Purchase Order"),
+    (SYNC_TYPE_OUTBOUND_SO, "Outbound Sales Delivery"),
+]
+
+ALLOWED_SYNC_TYPES = (
+    SYNC_TYPE_MASTER_PRODUCT,
+    SYNC_TYPE_MASTER_PARTNER,
+    SYNC_TYPE_INBOUND_PO,
+    SYNC_TYPE_OUTBOUND_SO,
+)
+
+DIRECTION_INBOUND = "inbound"
+DIRECTION_OUTBOUND = "outbound"
+
+SAP_DIRECTION_SELECTION = [
+    (DIRECTION_INBOUND, "Inbound (SAP -> Odoo)"),
+    (DIRECTION_OUTBOUND, "Outbound (Odoo -> SAP)"),
+]
+
+MASTER_TYPE_PRODUCT = "product"
+MASTER_TYPE_PARTNER = "partner"
+
+PARTNER_TYPE_VENDOR = "vendor"
+PARTNER_TYPE_CUSTOMER = "customer"
+
+REF_PREFIX_MASTER_DATA = "MD"
+REF_PREFIX_INBOUND_PO = "PO"
+REF_PREFIX_OUTBOUND_SO = "SO"
+
+PICKING_TYPE_CODE_INCOMING = "incoming"
+PICKING_TYPE_CODE_OUTGOING = "outgoing"
+PICKING_TYPE_CODE_INTERNAL = "internal"
+
+PICKING_STATE_DRAFT = "draft"
+PICKING_STATE_CONFIRMED = "confirmed"
+PICKING_STATE_ASSIGNED = "assigned"
+PICKING_STATE_DONE = "done"
+PICKING_STATE_CANCEL = "cancel"
+
+ERROR_UNAUTHORIZED = "Unauthorized: Invalid or missing API token"
+ERROR_INVALID_JSON = "Bad Request: Invalid JSON body"

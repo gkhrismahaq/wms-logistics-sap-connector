@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields
+from odoo import fields, models
+from ..constants import (
+    CONFIG_PARAM_SAP_API_TOKEN,
+    CONFIG_PARAM_SAP_BASE_URL,
+)
 
 
 class ResConfigSettings(models.TransientModel):
@@ -7,11 +11,11 @@ class ResConfigSettings(models.TransientModel):
 
     sap_base_url = fields.Char(
         string="SAP Base URL",
-        config_parameter="wms_sap_connector.sap_base_url",
-        help="URL host server SAP / FastAPI simulator (misal: http://localhost:8000).",
+        config_parameter=CONFIG_PARAM_SAP_BASE_URL,
+        help="SAP Upper Line / API gateway host URL (e.g. http://localhost:8000).",
     )
     sap_api_token = fields.Char(
         string="SAP API Token",
-        config_parameter="wms_sap_connector.sap_api_token",
-        help="Token rahasia otentikasi untuk otorisasi webhook dari Odoo ke SAP.",
+        config_parameter=CONFIG_PARAM_SAP_API_TOKEN,
+        help="Secret API token used for inbound and outbound webhook authentication.",
     )

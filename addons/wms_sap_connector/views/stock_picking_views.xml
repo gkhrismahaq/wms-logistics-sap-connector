@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Form View Inherit -->
     <record id="view_picking_form_inherit_sap" model="ir.ui.view">
         <field name="name">stock.picking.form.inherit.sap</field>
         <field name="model">stock.picking</field>
@@ -17,7 +16,6 @@
         </field>
     </record>
 
-    <!-- Tree / List View Inherit -->
     <record id="vpicktree_inherit_sap" model="ir.ui.view">
         <field name="name">stock.picking.tree.inherit.sap</field>
         <field name="model">stock.picking</field>
@@ -34,7 +32,6 @@
         </field>
     </record>
 
-    <!-- Search View Inherit -->
     <record id="view_picking_internal_search_inherit_sap" model="ir.ui.view">
         <field name="name">stock.picking.search.inherit.sap</field>
         <field name="model">stock.picking</field>
@@ -43,6 +40,13 @@
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="sap_doc_number" string="SAP Document Number"
                        filter_domain="[('sap_doc_number', 'ilike', self)]"/>
+                <separator/>
+                <filter string="SAP Sync Failed" name="filter_sap_failed"
+                        domain="[('sap_sync_status', '=', 'failed')]"/>
+                <filter string="SAP Synced" name="filter_sap_synced"
+                        domain="[('sap_sync_status', '=', 'synced')]"/>
+                <filter string="SAP Draft" name="filter_sap_draft"
+                        domain="[('sap_sync_status', '=', 'draft')]"/>
             </xpath>
             <xpath expr="//group[@expand='0']" position="inside">
                 <filter string="SAP Sync Status" name="group_sap_sync_status"
