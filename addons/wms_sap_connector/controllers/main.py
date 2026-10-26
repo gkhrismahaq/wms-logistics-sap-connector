@@ -22,11 +22,13 @@ from ..constants import (
     PARTNER_TYPE_VENDOR,
     REF_PREFIX_INBOUND_PO,
     REF_PREFIX_MASTER_DATA,
+    REF_PREFIX_OUTBOUND_SO,
     SYNC_STATUS_FAILED,
     SYNC_STATUS_SUCCESS,
     SYNC_TYPE_INBOUND_PO,
     SYNC_TYPE_MASTER_PARTNER,
     SYNC_TYPE_MASTER_PRODUCT,
+    SYNC_TYPE_OUTBOUND_SO,
 )
 
 _logger = logging.getLogger(__name__)
@@ -442,6 +444,83 @@ class SapInboundController(SapBaseController):
             self._log_transaction(
                 sync_ref=sync_ref,
                 sync_type=SYNC_TYPE_INBOUND_PO,
+                payload_str=payload_str,
+                status=SYNC_STATUS_FAILED,
+                error_message=err_msg,
+                direction=DIRECTION_INBOUND,
+            )
+            return request.make_json_response(
+                {
+                    "status": "ERROR",
+                    "code": 400,
+                    "message": err_msg,
+                    "sync_ref": sync_ref,
+                },
+                status=400,
+            )
+
+
+class SapOutboundController(SapBaseController):
+    """Controller handling incoming SAP Sales Delivery Orders (Outbound)."""
+
+    @http.route(
+        "/api/sap/outbound/delivery",
+        type="http",
+        auth="public",
+        methods=["POST"],
+        csrf=False,
+    )
+    def receive_sap_outbound_delivery(self, **kwargs):
+        """Public REST API endpoint to receive Delivery Orders from SAP."""
+        sync_ref, payload_str, body, error_response = (
+            self._extract_and_authenticate_payload(
+                prefix=REF_PREFIX_OUTBOUND_SO,
+                sync_type=SYNC_TYPE_OUTBOUND_SO,
+            )
+        )
+        if error_response:
+            return error_response
+
+        try:
+            picking, is_created = (
+                request.env["stock.picking"].sudo().create_outbound_from_sap(body)
+            )
+            self._log_transaction(
+                sync_ref=sync_ref,
+                sync_type=SYNC_TYPE_OUTBOUND_SO,
+                payload_str=payload_str,
+                status=SYNC_STATUS_SUCCESS,
+                error_message=False,
+                direction=DIRECTION_INBOUND,
+            )
+            message = (
+                "Delivery Order created successfully"
+                if is_created
+                else "Delivery Order already exists (idempotent)"
+            )
+            return request.make_json_response(
+                {
+                    "status": "SUCCESS",
+                    "code": 200,
+                    "message": message,
+                    "picking_id": picking.id,
+                    "picking_name": picking.name,
+                    "sap_doc_number": picking.sap_doc_number,
+                    "sync_ref": sync_ref,
+                },
+                status=200,
+            )
+        except Exception as exc:
+            request.env.cr.rollback()
+            _logger.exception(
+                "Failed to process outbound delivery %s: %s", sync_ref, str(exc)
+            )
+            err_msg = str(exc)
+            if not err_msg.startswith("Bad Request:"):
+                err_msg = f"Processing error: {err_msg}"
+            self._log_transaction(
+                sync_ref=sync_ref,
+                sync_type=SYNC_TYPE_OUTBOUND_SO,
                 payload_str=payload_str,
                 status=SYNC_STATUS_FAILED,
                 error_message=err_msg,

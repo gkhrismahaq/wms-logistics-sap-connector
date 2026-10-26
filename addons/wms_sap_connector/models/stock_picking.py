@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 
 import requests
 from odoo import api, fields, models
@@ -16,6 +16,7 @@ from ..constants import (
     PICKING_STATE_CANCEL,
     PICKING_STATE_CONFIRMED,
     PICKING_TYPE_CODE_INCOMING,
+    PICKING_TYPE_CODE_OUTGOING,
     REF_PREFIX_GOODS_RECEIPT,
     SAP_ENDPOINT_GOODS_RECEIPT,
     SAP_PICKING_SYNC_STATUS_SELECTION,
@@ -467,7 +468,10 @@ class StockPicking(models.Model):
                 clean_date = expected_date_str.strip()
                 if "T" in clean_date:
                     clean_date = clean_date.replace("Z", "+00:00")
-                    scheduled_date = datetime.fromisoformat(clean_date)
+                    dt = datetime.fromisoformat(clean_date)
+                    if dt.tzinfo is not None:
+                        dt = dt.astimezone(UTC).replace(tzinfo=None)
+                    scheduled_date = dt
                 else:
                     parsed_date = datetime.strptime(clean_date, "%Y-%m-%d").date()
                     scheduled_date = datetime.combine(parsed_date, time.min)
@@ -515,5 +519,304 @@ class StockPicking(models.Model):
 
         if picking.move_line_ids:
             picking.move_line_ids._apply_putaway_strategy()
+
+        return picking, True
+
+    @api.model
+    def create_outbound_from_sap(self, payload_dict):
+        """Creates an outgoing stock picking (Delivery Order) and stock moves from SAP DO payload.
+
+        Validates customer and material items, performs idempotent check, resolves
+        appropriate warehouse and location records, batch-creates moves, and confirms
+        the picking to 'assigned' or 'confirmed' state.
+
+        Args:
+            payload_dict (dict): Parsed JSON body containing SAP Delivery Order details.
+
+        Returns:
+            tuple: (picking_record: stock.picking, is_created: bool)
+
+        Raises:
+            ValueError: If payload is missing mandatory fields or references nonexistent records.
+        """
+        sap_doc_number = payload_dict.get("sap_doc_number")
+        customer_code = payload_dict.get("customer_code")
+        items = payload_dict.get("items")
+
+        if (
+            not sap_doc_number
+            or not isinstance(sap_doc_number, str)
+            or not sap_doc_number.strip()
+        ):
+            raise ValueError(
+                "Bad Request: Missing or invalid mandatory field 'sap_doc_number'"
+            )
+
+        if (
+            not customer_code
+            or not isinstance(customer_code, str)
+            or not customer_code.strip()
+        ):
+            raise ValueError(
+                "Bad Request: Missing or invalid mandatory field 'customer_code'"
+            )
+
+        if not isinstance(items, list) or len(items) == 0:
+            raise ValueError("Bad Request: Missing or empty 'items' array")
+
+        sap_doc_number = sap_doc_number.strip()
+        customer_code_clean = customer_code.strip()
+
+        # Idempotency check: lookup existing outgoing picking for this sap_doc_number
+        existing_picking = self.search(
+            [
+                ("sap_doc_number", "=", sap_doc_number),
+                ("picking_type_id.code", "=", PICKING_TYPE_CODE_OUTGOING),
+                ("state", "!=", PICKING_STATE_CANCEL),
+            ],
+            limit=1,
+        )
+        if existing_picking:
+            return existing_picking, False
+
+        # Customer resolution
+        customer = (
+            self.env["res.partner"]
+            .sudo()
+            .search(
+                [("sap_partner_code", "=", customer_code_clean)],
+                limit=1,
+            )
+        )
+        if not customer:
+            raise ValueError(
+                f"Bad Request: Customer with SAP partner code '{customer_code_clean}' not found"
+            )
+
+        # Warehouse and picking type resolution (outgoing)
+        warehouse_code = payload_dict.get("warehouse_code") or payload_dict.get(
+            "plant_code"
+        )
+        picking_type_obj = self.env["stock.picking.type"].sudo()
+        warehouse_obj = self.env["stock.warehouse"].sudo()
+
+        picking_type = None
+        if warehouse_code and isinstance(warehouse_code, str):
+            wh_code_clean = warehouse_code.strip()
+            wh = warehouse_obj.search(
+                ["|", ("code", "=", wh_code_clean), ("name", "ilike", wh_code_clean)],
+                limit=1,
+            )
+            if wh:
+                picking_type = picking_type_obj.search(
+                    [
+                        ("warehouse_id", "=", wh.id),
+                        ("code", "=", PICKING_TYPE_CODE_OUTGOING),
+                    ],
+                    limit=1,
+                )
+
+        if not picking_type:
+            company = self.env.company
+            wh = warehouse_obj.search([("company_id", "=", company.id)], limit=1)
+            if wh:
+                picking_type = picking_type_obj.search(
+                    [
+                        ("warehouse_id", "=", wh.id),
+                        ("code", "=", PICKING_TYPE_CODE_OUTGOING),
+                    ],
+                    limit=1,
+                )
+
+        if not picking_type:
+            picking_type = picking_type_obj.search(
+                [
+                    ("code", "=", PICKING_TYPE_CODE_OUTGOING),
+                    ("company_id", "in", (self.env.company.id, False)),
+                ],
+                limit=1,
+            )
+
+        if not picking_type:
+            raise ValueError(
+                "Outgoing delivery operation type (stock.picking.type) not configured in the system."
+            )
+
+        # Source internal location resolution
+        location_id = picking_type.default_location_src_id.id
+        if not location_id and picking_type.warehouse_id:
+            location_id = picking_type.warehouse_id.lot_stock_id.id
+        if not location_id:
+            source_loc = (
+                self.env["stock.location"]
+                .sudo()
+                .search(
+                    [
+                        ("usage", "=", "internal"),
+                        ("company_id", "in", (picking_type.company_id.id, False)),
+                    ],
+                    limit=1,
+                )
+            )
+            location_id = source_loc.id if source_loc else False
+        if not location_id:
+            raise ValueError("Internal source stock location not configured.")
+
+        # Destination customer location resolution
+        customer_loc = self.env.ref(
+            "stock.stock_location_customers", raise_if_not_found=False
+        )
+        if not customer_loc:
+            customer_loc = (
+                self.env["stock.location"]
+                .sudo()
+                .search(
+                    [
+                        ("usage", "=", "customer"),
+                        ("company_id", "in", (picking_type.company_id.id, False)),
+                    ],
+                    limit=1,
+                )
+            )
+        dest_location_id = (
+            customer_loc.id
+            if customer_loc
+            else (
+                customer.property_stock_customer.id
+                if customer.property_stock_customer
+                else picking_type.default_location_dest_id.id
+            )
+        )
+        if not dest_location_id:
+            raise ValueError("Customer destination location not configured.")
+
+        # Batch validation of material items
+        product_obj = self.env["product.product"].sudo()
+        mat_codes = set()
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ValueError(f"Bad Request: Item #{idx + 1} must be a JSON object")
+            code = item.get("sap_material_code")
+            if not code or not str(code).strip():
+                raise ValueError(
+                    f"Bad Request: Item #{idx + 1} missing mandatory field 'sap_material_code'"
+                )
+            mat_codes.add(str(code).strip())
+
+        products = product_obj.search([("sap_material_code", "in", list(mat_codes))])
+        prod_map = {p.sap_material_code: p for p in products}
+
+        validated_moves_data = []
+        uom_obj = self.env["uom.uom"].sudo()
+        for idx, item in enumerate(items):
+            code = str(item.get("sap_material_code")).strip()
+            product = prod_map.get(code)
+            if not product:
+                raise ValueError(
+                    f"Bad Request: Material with SAP material code '{code}' not found"
+                )
+
+            qty = item.get("qty")
+            if qty is None:
+                raise ValueError(
+                    f"Bad Request: Item #{idx + 1} missing mandatory field 'qty'"
+                )
+
+            try:
+                qty_val = float(qty)
+                if qty_val <= 0:
+                    raise ValueError()
+            except (ValueError, TypeError):
+                raise ValueError(
+                    f"Bad Request: Item #{idx + 1} ({code}) 'qty' must be greater than 0"
+                )
+
+            target_uom = product.uom_id
+            uom_str = item.get("uom")
+            if uom_str and isinstance(uom_str, str):
+                found_uom = uom_obj.search(
+                    [
+                        "|",
+                        ("name", "=ilike", uom_str.strip()),
+                        ("category_id", "=", product.uom_id.category_id.id),
+                    ],
+                    limit=1,
+                )
+                if found_uom:
+                    target_uom = found_uom
+                else:
+                    _logger.warning(
+                        "UoM '%s' not found for material '%s', defaulting to '%s'",
+                        uom_str,
+                        code,
+                        product.uom_id.name,
+                    )
+
+            validated_moves_data.append(
+                {
+                    "product": product,
+                    "qty": qty_val,
+                    "uom": target_uom,
+                }
+            )
+
+        # Scheduled date resolution
+        scheduled_date = fields.Datetime.now()
+        expected_date_str = payload_dict.get("expected_date") or payload_dict.get(
+            "scheduled_date"
+        )
+        if expected_date_str and isinstance(expected_date_str, str):
+            try:
+                clean_date = expected_date_str.strip()
+                if "T" in clean_date:
+                    clean_date = clean_date.replace("Z", "+00:00")
+                    dt = datetime.fromisoformat(clean_date)
+                    if dt.tzinfo is not None:
+                        dt = dt.astimezone(UTC).replace(tzinfo=None)
+                    scheduled_date = dt
+                else:
+                    parsed_date = datetime.strptime(clean_date, "%Y-%m-%d").date()
+                    scheduled_date = datetime.combine(parsed_date, time.min)
+            except Exception as dt_err:
+                _logger.warning(
+                    "Could not parse expected_date '%s', falling back to now(): %s",
+                    expected_date_str,
+                    dt_err,
+                )
+
+        # Create picking header
+        picking_vals = {
+            "picking_type_id": picking_type.id,
+            "partner_id": customer.id,
+            "location_id": location_id,
+            "location_dest_id": dest_location_id,
+            "origin": sap_doc_number,
+            "sap_doc_number": sap_doc_number,
+            "sap_sync_status": SYNC_STATUS_DRAFT,
+            "scheduled_date": scheduled_date,
+            "company_id": picking_type.company_id.id,
+        }
+        picking = self.sudo().create(picking_vals)
+
+        # Batch create moves
+        move_vals_list = [
+            {
+                "name": vdata["product"].display_name or vdata["product"].name,
+                "product_id": vdata["product"].id,
+                "product_uom_qty": vdata["qty"],
+                "product_uom": vdata["uom"].id,
+                "picking_id": picking.id,
+                "location_id": picking.location_id.id,
+                "location_dest_id": picking.location_dest_id.id,
+                "company_id": picking.company_id.id,
+            }
+            for vdata in validated_moves_data
+        ]
+        self.env["stock.move"].sudo().create(move_vals_list)
+
+        # Transition picking to confirmed and try to reserve stock
+        picking.action_confirm()
+        if picking.state == PICKING_STATE_CONFIRMED:
+            picking.action_assign()
 
         return picking, True
