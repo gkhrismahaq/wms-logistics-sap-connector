@@ -10,7 +10,12 @@
                         string="Retry SAP Webhook"
                         type="object"
                         class="btn-secondary"
-                        invisible="state != 'done' or sap_sync_status == 'synced' or not sap_doc_number"/>
+                        invisible="picking_type_code != 'incoming' or state != 'done' or sap_sync_status == 'synced' or not sap_doc_number"/>
+                <button name="action_send_sap_goods_issue_webhook"
+                        string="Send Goods Issue to SAP"
+                        type="object"
+                        class="btn-secondary"
+                        invisible="picking_type_code != 'outgoing' or state != 'done' or sap_sync_status == 'synced' or not sap_doc_number or not has_pod"/>
                 <button name="%(wms_sap_connector.action_report_surat_jalan)d"
                         string="Print Surat Jalan"
                         type="action"
