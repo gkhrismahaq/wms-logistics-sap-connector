@@ -1,4 +1,5 @@
 import base64
+import binascii
 import json
 import logging
 import uuid
@@ -94,7 +95,7 @@ class SapBaseController(http.Controller):
                     "sync_date": fields.Datetime.now(),
                 }
             )
-        except Exception as log_err:
+        except Exception as log_err:  # noqa: BLE001
             _logger.error(
                 "Failed to write to sap.sync.log for %s: %s", sync_ref, str(log_err)
             )
@@ -130,7 +131,7 @@ class SapBaseController(http.Controller):
             body = request.httprequest.get_json(silent=True)
             if not body and payload_str:
                 body = json.loads(payload_str, strict=False)
-        except Exception:
+        except (ValueError, TypeError):
             body = None
 
         if not body or not isinstance(body, dict):
@@ -153,9 +154,12 @@ class SapBaseController(http.Controller):
                 ),
             )
 
-        if "params" in body and isinstance(body["params"], dict):
-            if "master_type" in body["params"] or "sap_doc_number" in body["params"]:
-                body = body["params"]
+        if (
+            "params" in body
+            and isinstance(body["params"], dict)
+            and ("master_type" in body["params"] or "sap_doc_number" in body["params"])
+        ):
+            body = body["params"]
 
         return sync_ref, payload_str, body, None
 
@@ -170,7 +174,7 @@ class SapMasterDataController(SapBaseController):
 
         for item in data_list:
             if not isinstance(item, dict):
-                raise ValueError("Item in product data list must be a JSON object.")
+                raise TypeError("Item in product data list must be a JSON object.")
 
             sap_material_code = item.get("sap_material_code")
             name = item.get("name")
@@ -211,7 +215,7 @@ class SapMasterDataController(SapBaseController):
                 try:
                     base64.b64decode(clean_img, validate=True)
                     vals["image_1920"] = clean_img
-                except Exception as img_err:
+                except (binascii.Error, ValueError) as img_err:
                     _logger.warning(
                         "Invalid Base64 image string for material %s: %s",
                         sap_material_code,
@@ -239,7 +243,7 @@ class SapMasterDataController(SapBaseController):
 
         for item in data_list:
             if not isinstance(item, dict):
-                raise ValueError("Item in partner data list must be a JSON object.")
+                raise TypeError("Item in partner data list must be a JSON object.")
 
             sap_partner_code = item.get("sap_partner_code")
             name = item.get("name")
@@ -354,9 +358,7 @@ class SapMasterDataController(SapBaseController):
 
         except Exception as exc:
             request.env.cr.rollback()
-            _logger.exception(
-                "Error processing master data for %s: %s", sync_ref, str(exc)
-            )
+            _logger.exception("Error processing master data for %s", sync_ref)
             err_msg = str(exc)
             self._log_transaction(
                 sync_ref=sync_ref,
@@ -437,7 +439,7 @@ class SapInboundController(SapBaseController):
                 )
         except Exception as exc:
             request.env.cr.rollback()
-            _logger.exception("Failed to process inbound PO %s: %s", sync_ref, str(exc))
+            _logger.exception("Failed to process inbound PO %s", sync_ref)
             err_msg = str(exc)
             if not err_msg.startswith("Bad Request:"):
                 err_msg = f"Processing error: {err_msg}"
@@ -512,9 +514,7 @@ class SapOutboundController(SapBaseController):
             )
         except Exception as exc:
             request.env.cr.rollback()
-            _logger.exception(
-                "Failed to process outbound delivery %s: %s", sync_ref, str(exc)
-            )
+            _logger.exception("Failed to process outbound delivery %s", sync_ref)
             err_msg = str(exc)
             if not err_msg.startswith("Bad Request:"):
                 err_msg = f"Processing error: {err_msg}"

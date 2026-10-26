@@ -529,7 +529,7 @@ class StockPicking(models.Model):
         mat_codes = set()
         for idx, item in enumerate(items):
             if not isinstance(item, dict):
-                raise ValueError(f"Bad Request: Item #{idx + 1} must be a JSON object")
+                raise TypeError(f"Bad Request: Item #{idx + 1} must be a JSON object")
             code = item.get("sap_material_code")
             if not code or not str(code).strip():
                 raise ValueError(
@@ -609,7 +609,7 @@ class StockPicking(models.Model):
                 else:
                     parsed_date = datetime.strptime(clean_date, "%Y-%m-%d").date()
                     scheduled_date = datetime.combine(parsed_date, time.min)
-            except Exception as dt_err:
+            except (ValueError, TypeError) as dt_err:
                 _logger.warning(
                     "Could not parse expected_date '%s', falling back to now(): %s",
                     expected_date_str,
@@ -829,7 +829,7 @@ class StockPicking(models.Model):
         mat_codes = set()
         for idx, item in enumerate(items):
             if not isinstance(item, dict):
-                raise ValueError(f"Bad Request: Item #{idx + 1} must be a JSON object")
+                raise TypeError(f"Bad Request: Item #{idx + 1} must be a JSON object")
             code = item.get("sap_material_code")
             if not code or not str(code).strip():
                 raise ValueError(
@@ -911,7 +911,7 @@ class StockPicking(models.Model):
                 else:
                     parsed_date = datetime.strptime(clean_date, "%Y-%m-%d").date()
                     scheduled_date = datetime.combine(parsed_date, time.min)
-            except Exception as dt_err:
+            except (ValueError, TypeError) as dt_err:
                 _logger.warning(
                     "Could not parse expected_date '%s', falling back to now(): %s",
                     expected_date_str,

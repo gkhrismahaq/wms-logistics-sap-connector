@@ -121,7 +121,7 @@ class TestReportSuratJalan(TransactionCase):
         )
 
         # 1. Test HTML rendering content
-        html_bytes, report_type = self.report_action._render_qweb_html(
+        html_bytes, _report_type = self.report_action._render_qweb_html(
             self.report_action.id, [picking.id]
         )
         html_str = (

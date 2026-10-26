@@ -100,15 +100,18 @@ class TestWmsVehicle(TransactionCase):
             }
         )
 
-        with mute_logger("odoo.sql_db"), self.assertRaises(IntegrityError):
-            with self.cr.savepoint():
-                self.env["wms.vehicle"].create(
-                    {
-                        "license_plate": plate,
-                        "max_weight": 1500.0,
-                        "max_volume": 8.0,
-                    }
-                )
+        with (
+            mute_logger("odoo.sql_db"),
+            self.assertRaises(IntegrityError),
+            self.cr.savepoint(),
+        ):
+            self.env["wms.vehicle"].create(
+                {
+                    "license_plate": plate,
+                    "max_weight": 1500.0,
+                    "max_volume": 8.0,
+                }
+            )
 
     def test_03_capacity_validation_negative_values(self):
         """REQ-FLT-01: Negative capacity for weight or volume must raise ValidationError."""
