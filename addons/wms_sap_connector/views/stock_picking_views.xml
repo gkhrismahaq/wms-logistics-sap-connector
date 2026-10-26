@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form View Inherit -->
+    <record id="view_picking_form_inherit_sap" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.sap</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sap_doc_number" placeholder="e.g. PO-SAP-2026-001 or SO-DELIV-2026-901"/>
+                <field name="sap_sync_status" widget="badge"
+                       decoration-success="sap_sync_status == 'synced'"
+                       decoration-danger="sap_sync_status == 'failed'"
+                       decoration-warning="sap_sync_status == 'pending'"
+                       decoration-info="sap_sync_status == 'draft'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Tree / List View Inherit -->
+    <record id="vpicktree_inherit_sap" model="ir.ui.view">
+        <field name="name">stock.picking.tree.inherit.sap</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sap_doc_number" optional="show"/>
+                <field name="sap_sync_status" widget="badge" optional="show"
+                       decoration-success="sap_sync_status == 'synced'"
+                       decoration-danger="sap_sync_status == 'failed'"
+                       decoration-warning="sap_sync_status == 'pending'"
+                       decoration-info="sap_sync_status == 'draft'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Search View Inherit -->
+    <record id="view_picking_internal_search_inherit_sap" model="ir.ui.view">
+        <field name="name">stock.picking.search.inherit.sap</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sap_doc_number" string="SAP Document Number"
+                       filter_domain="[('sap_doc_number', 'ilike', self)]"/>
+            </xpath>
+            <xpath expr="//group[@expand='0']" position="inside">
+                <filter string="SAP Sync Status" name="group_sap_sync_status"
+                        context="{'group_by': 'sap_sync_status'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
