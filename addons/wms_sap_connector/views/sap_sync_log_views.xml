@@ -115,8 +115,8 @@
 
     <menuitem id="menu_wms_sap_root" name="SAP Integration"
         parent="stock.menu_stock_root" sequence="90"
-        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher" />
+        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher,base.group_system" />
     <menuitem id="menu_sap_sync_log" name="Sync Logs"
         parent="menu_wms_sap_root" action="action_sap_sync_log" sequence="10"
-        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher" />
+        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher,base.group_system" />
 </odoo>
