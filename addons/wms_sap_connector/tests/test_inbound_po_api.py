@@ -46,12 +46,17 @@ class TestInboundPoApi(HttpCase):
                 )
             )
 
-        cls.product = (
-            cls.env["product.product"]
+        tmpl = (
+            cls.env["product.template"]
             .sudo()
+            .with_context(active_test=False)
             .search([("sap_material_code", "=", "MAT-KOPI-01")], limit=1)
         )
-        if not cls.product:
+        if tmpl:
+            tmpl.active = True
+            tmpl.with_context(active_test=False).product_variant_ids.write({"active": True})
+            cls.product = tmpl.product_variant_id
+        else:
             cls.product = (
                 cls.env["product.product"]
                 .sudo()

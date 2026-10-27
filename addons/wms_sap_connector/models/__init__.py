@@ -1,4 +1,5 @@
 from . import (
+    ir_actions_report,
     product_template,
     res_config_settings,
     res_partner,

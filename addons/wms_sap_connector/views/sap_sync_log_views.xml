@@ -5,18 +5,18 @@
         <field name="model">sap.sync.log</field>
         <field name="arch" type="xml">
             <tree string="SAP Integration Logs" create="0" edit="0" delete="1"
-                  decoration-danger="status == 'failed'"
-                  decoration-success="status == 'success'"
-                  decoration-warning="status == 'pending'">
-                <field name="sync_date"/>
-                <field name="name"/>
-                <field name="sync_type"/>
-                <field name="direction"/>
+                decoration-danger="status == 'failed'"
+                decoration-success="status == 'success'"
+                decoration-warning="status == 'pending'">
+                <field name="sync_date" />
+                <field name="name" />
+                <field name="sync_type" />
+                <field name="direction" />
                 <field name="status" widget="badge"
-                       decoration-danger="status == 'failed'"
-                       decoration-success="status == 'success'"
-                       decoration-warning="status == 'pending'"/>
-                <field name="error_message"/>
+                    decoration-danger="status == 'failed'"
+                    decoration-success="status == 'success'"
+                    decoration-warning="status == 'pending'" />
+                <field name="error_message" />
             </tree>
         </field>
     </record>
@@ -28,31 +28,39 @@
             <form string="SAP Integration Log" create="0" edit="0">
                 <header>
                     <button name="action_retry_sync" string="Retry Sync" type="object"
-                            class="oe_highlight" invisible="status != 'failed'"/>
-                    <field name="status" widget="statusbar" statusbar_visible="pending,success,failed"/>
+                        class="oe_highlight" invisible="status != 'failed'"
+                        groups="wms_sap_connector.group_wms_manager" />
+                    <field name="status" widget="statusbar"
+                        statusbar_visible="pending,success,failed" />
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <label for="name" string="Transaction Reference"/>
+                        <label for="name" string="Transaction Reference" />
                         <h1>
-                            <field name="name" readonly="1"/>
+                            <field name="name" readonly="1" />
                         </h1>
                     </div>
                     <group>
                         <group string="Transaction Metadata">
-                            <field name="sync_type" readonly="1"/>
-                            <field name="direction" readonly="1"/>
+                            <field name="sync_type" readonly="1" />
+                            <field name="direction" readonly="1" />
                         </group>
                         <group string="Execution Info">
-                            <field name="sync_date" readonly="1"/>
+                            <field name="sync_date" readonly="1" />
                         </group>
                     </group>
                     <notebook>
-                        <page string="Payload (JSON)" name="payload">
-                            <field name="payload" readonly="1" placeholder="Payload content..."/>
+                        <page string="Request Payload (JSON)" name="payload">
+                            <field name="payload" readonly="1" placeholder="Payload content..." />
                         </page>
-                        <page string="Error Message" name="error_message" invisible="not error_message">
-                            <field name="error_message" readonly="1"/>
+                        <page string="Response Payload (JSON)" name="response_payload"
+                            invisible="not response_payload">
+                            <field name="response_payload" readonly="1"
+                                placeholder="Response content..." />
+                        </page>
+                        <page string="Error Message" name="error_message"
+                            invisible="not error_message">
+                            <field name="error_message" readonly="1" />
                         </page>
                     </notebook>
                 </sheet>
@@ -65,21 +73,26 @@
         <field name="model">sap.sync.log</field>
         <field name="arch" type="xml">
             <search string="Search Integration Logs">
-                <field name="name" string="Reference"/>
-                <field name="error_message" string="Error Details"/>
-                <field name="payload" string="Payload Content"/>
-                <separator/>
-                <filter string="Failed" name="filter_failed" domain="[('status', '=', 'failed')]"/>
-                <filter string="Pending" name="filter_pending" domain="[('status', '=', 'pending')]"/>
-                <filter string="Success" name="filter_success" domain="[('status', '=', 'success')]"/>
-                <separator/>
-                <filter string="Inbound" name="filter_inbound" domain="[('direction', '=', 'inbound')]"/>
-                <filter string="Outbound" name="filter_outbound" domain="[('direction', '=', 'outbound')]"/>
+                <field name="name" string="Reference" />
+                <field name="error_message" string="Error Details" />
+                <field name="payload" string="Payload Content" />
+                <separator />
+                <filter string="Failed" name="filter_failed" domain="[('status', '=', 'failed')]" />
+                <filter string="Pending" name="filter_pending" domain="[('status', '=', 'pending')]" />
+                <filter string="Success" name="filter_success" domain="[('status', '=', 'success')]" />
+                <separator />
+                <filter string="Inbound" name="filter_inbound"
+                    domain="[('direction', '=', 'inbound')]" />
+                <filter string="Outbound" name="filter_outbound"
+                    domain="[('direction', '=', 'outbound')]" />
                 <group expand="0" string="Group By">
-                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
-                    <filter string="Sync Type" name="group_sync_type" context="{'group_by': 'sync_type'}"/>
-                    <filter string="Direction" name="group_direction" context="{'group_by': 'direction'}"/>
-                    <filter string="Sync Date" name="group_sync_date" context="{'group_by': 'sync_date:day'}"/>
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}" />
+                    <filter string="Sync Type" name="group_sync_type"
+                        context="{'group_by': 'sync_type'}" />
+                    <filter string="Direction" name="group_direction"
+                        context="{'group_by': 'direction'}" />
+                    <filter string="Sync Date" name="group_sync_date"
+                        context="{'group_by': 'sync_date:day'}" />
                 </group>
             </search>
         </field>
@@ -89,7 +102,7 @@
         <field name="name">SAP Integration Logs</field>
         <field name="res_model">sap.sync.log</field>
         <field name="view_mode">tree,form</field>
-        <field name="search_view_id" ref="view_sap_sync_log_search"/>
+        <field name="search_view_id" ref="view_sap_sync_log_search" />
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 No SAP integration logs recorded yet.
@@ -101,7 +114,9 @@
     </record>
 
     <menuitem id="menu_wms_sap_root" name="SAP Integration"
-              parent="stock.menu_stock_root" sequence="90"/>
+        parent="stock.menu_stock_root" sequence="90"
+        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher" />
     <menuitem id="menu_sap_sync_log" name="Sync Logs"
-              parent="menu_wms_sap_root" action="action_sap_sync_log" sequence="10"/>
+        parent="menu_wms_sap_root" action="action_sap_sync_log" sequence="10"
+        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher" />
 </odoo>

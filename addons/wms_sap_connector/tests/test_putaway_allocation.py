@@ -39,16 +39,26 @@ class TestPutawayAllocation(TransactionCase):
         cls.product_pucuk = cls.env["product.product"].search(
             [("sap_material_code", "=", "MAT-PUCUK-01")], limit=1
         )
-        cls.product_unmapped = cls.env["product.product"].search(
-            [("sap_material_code", "=", "MAT-BERAS-05")], limit=1
+        tmpl_beras = (
+            cls.env["product.template"]
+            .sudo()
+            .with_context(active_test=False)
+            .search([("sap_material_code", "=", "MAT-BERAS-05")], limit=1)
         )
-        if not cls.product_unmapped:
-            cls.product_unmapped = cls.env["product.product"].create(
-                {
-                    "name": "Beras Premium Maknyuss 5kg",
-                    "sap_material_code": "MAT-BERAS-05",
-                    "type": "product",
-                }
+        if tmpl_beras:
+            tmpl_beras.active = True
+            cls.product_unmapped = tmpl_beras.product_variant_id
+        else:
+            cls.product_unmapped = (
+                cls.env["product.product"]
+                .sudo()
+                .create(
+                    {
+                        "name": "Beras Premium Maknyuss 5kg",
+                        "sap_material_code": "MAT-BERAS-05",
+                        "type": "product",
+                    }
+                )
             )
 
         # Test users for security validation
@@ -73,7 +83,7 @@ class TestPutawayAllocation(TransactionCase):
         )
 
     def test_01_putaway_allocation_mapped_products(self):
-        """REQ-INB-06: Mapped products must automatically allocate destination shelves."""
+        """Test mapped products automatically allocate destination shelves."""
         doc_num = f"PO-TEST-PUTAWAY-{uuid.uuid4().hex[:6].upper()}"
         payload = {
             "sap_doc_number": doc_num,
@@ -100,7 +110,7 @@ class TestPutawayAllocation(TransactionCase):
         self.assertEqual(ml_pucuk.location_dest_id.id, self.shelf2_location.id)
 
     def test_02_putaway_fallback_unmapped_product(self):
-        """REQ-INB-06: Unmapped products must fallback safely to warehouse main stock location."""
+        """Test unmapped products fallback safely to warehouse main stock location."""
         doc_num = f"PO-TEST-FALLBACK-{uuid.uuid4().hex[:6].upper()}"
         payload = {
             "sap_doc_number": doc_num,
@@ -119,7 +129,7 @@ class TestPutawayAllocation(TransactionCase):
         self.assertEqual(ml_unmapped.location_dest_id.id, self.stock_location.id)
 
     def test_03_security_putaway_rule_access(self):
-        """REQ-INB-07: Operator has read-only access while Manager has full CRUD on putaway rules."""
+        """Test operator has read-only access while Manager has full CRUD on putaway rules."""
         # 1. Operator can read
         rules_operator = (
             self.env["stock.putaway.rule"].with_user(self.user_operator).search([])

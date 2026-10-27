@@ -8,8 +8,8 @@
         <field name="arch" type="xml">
             <xpath expr="//app[@name='stock']" position="inside">
                 <block title="SAP Integration Connector" name="sap_connector_settings_block">
-                    <setting id="sap_base_url_setting" help="SAP Upper Line / API gateway host URL (e.g. http://localhost:8000)">
-                        <field name="sap_base_url" placeholder="http://localhost:8000"/>
+                    <setting id="sap_base_url_setting" help="SAP Gateway URL (e.g. http://mock-sap:8000 for Docker network, or external SAP endpoint)">
+                        <field name="sap_base_url" placeholder="http://mock-sap:8000"/>
                     </setting>
                     <setting id="sap_api_token_setting" help="Secret API token used for inbound and outbound webhook authentication">
                         <field name="sap_api_token" password="True" placeholder="Enter secret token"/>

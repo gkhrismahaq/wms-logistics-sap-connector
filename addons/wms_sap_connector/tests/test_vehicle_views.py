@@ -1,6 +1,6 @@
 """Test suite for WMS Vehicle UI Views, Actions, and Menus.
 
-Validates REQ-FLT-03 (Tree, Form, Search views, Window Action, and Menu structure for wms.vehicle).
+Validates tree, form, search views, window action, and menu structure for wms.vehicle.
 """
 
 import uuid
@@ -58,7 +58,7 @@ class TestVehicleViews(TransactionCase):
         )
 
     def test_01_vehicle_views_definition(self):
-        """REQ-FLT-03: Tree, Form, and Search views must be defined and valid."""
+        """Test tree, form, and search views must be defined and valid."""
         tree_view = self.env.ref("wms_sap_connector.view_wms_vehicle_tree")
         self.assertTrue(tree_view)
         self.assertEqual(tree_view.model, "wms.vehicle")
@@ -81,7 +81,7 @@ class TestVehicleViews(TransactionCase):
         self.assertIn("group_by_state", arch_search["arch"])
 
     def test_02_vehicle_action_and_menus(self):
-        """REQ-FLT-03: Window Action and Menu hierarchy must be correctly configured."""
+        """Test window action and menu hierarchy must be correctly configured."""
         action = self.env.ref("wms_sap_connector.action_wms_vehicle")
         self.assertTrue(action)
         self.assertEqual(action.res_model, "wms.vehicle")
@@ -99,7 +99,7 @@ class TestVehicleViews(TransactionCase):
         self.assertEqual(menu_vehicle.action.id, action.id)
 
     def test_03_search_and_filters_execution(self):
-        """REQ-FLT-03: Filter domain and search fields must return accurate records."""
+        """Test filter domain and search fields return accurate records."""
         # 1. Search by exact license plate
         res_plate = self.env["wms.vehicle"].search(
             [("license_plate", "=", self.v_avail.license_plate)]

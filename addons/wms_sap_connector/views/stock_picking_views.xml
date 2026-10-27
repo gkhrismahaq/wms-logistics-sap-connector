@@ -10,12 +10,14 @@
                         string="Retry SAP Webhook"
                         type="object"
                         class="btn-secondary"
-                        invisible="picking_type_code != 'incoming' or state != 'done' or sap_sync_status == 'synced' or not sap_doc_number"/>
+                        invisible="picking_type_code != 'incoming' or state != 'done' or sap_sync_status == 'synced' or not sap_doc_number"
+                        groups="wms_sap_connector.group_wms_manager"/>
                 <button name="action_send_sap_goods_issue_webhook"
                         string="Send Goods Issue to SAP"
                         type="object"
                         class="btn-secondary"
-                        invisible="picking_type_code != 'outgoing' or state != 'done' or sap_sync_status == 'synced' or not sap_doc_number or not has_pod"/>
+                        invisible="picking_type_code != 'outgoing' or state != 'done' or sap_sync_status == 'synced' or not sap_doc_number or not has_pod"
+                        groups="wms_sap_connector.group_wms_manager,wms_sap_connector.group_wms_dispatcher"/>
                 <button name="%(wms_sap_connector.action_report_surat_jalan)d"
                         string="Print Surat Jalan"
                         type="action"
@@ -23,6 +25,7 @@
                         invisible="picking_type_code != 'outgoing'"/>
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
+                <field name="is_dispatcher_or_manager" invisible="1"/>
                 <field name="sap_doc_number" placeholder="e.g. PO-SAP-2026-001 or SO-DELIV-2026-901"/>
                 <field name="sap_sync_status" widget="badge"
                        decoration-success="sap_sync_status == 'synced'"
@@ -38,8 +41,10 @@
                 <page string="Fleet &amp; Dispatch" name="page_fleet_dispatch">
                     <group>
                         <group string="Fleet Assignment">
-                            <field name="vehicle_id" options="{'no_create': True}"/>
-                            <field name="driver_id" options="{'no_create': True}"/>
+                            <field name="vehicle_id" options="{'no_create': True}"
+                                   readonly="not is_dispatcher_or_manager or state == 'done'"/>
+                            <field name="driver_id" options="{'no_create': True}"
+                                   readonly="not is_dispatcher_or_manager or state == 'done'"/>
                         </group>
                         <group string="Cargo Load Summary">
                             <field name="total_weight"/>
@@ -51,13 +56,15 @@
                       invisible="picking_type_code != 'outgoing'">
                     <group>
                         <group string="Handover Details">
-                            <field name="pod_signed_by" placeholder="e.g. Budi Santoso (Store Manager)"/>
-                            <field name="pod_timestamp"/>
+                            <field name="pod_signed_by" placeholder="e.g. Budi Santoso (Store Manager)"
+                                   readonly="not is_dispatcher_or_manager"/>
+                            <field name="pod_timestamp" readonly="not is_dispatcher_or_manager"/>
                             <field name="has_pod"/>
                         </group>
                         <group string="Visual Proof / Photo">
                             <field name="proof_of_delivery" widget="image" class="oe_avatar"
-                                   options="{'preview_image': 'proof_of_delivery', 'size': [300, 300]}"/>
+                                   options="{'preview_image': 'proof_of_delivery', 'size': [300, 300]}"
+                                   readonly="not is_dispatcher_or_manager"/>
                         </group>
                     </group>
                 </page>

@@ -91,9 +91,11 @@ def run_e2e_master_data_sync(session, odoo_url, token):
     """Memvalidasi push material dan partner dari SAP ke Odoo."""
     ...
 
+
 def run_e2e_inbound_flow(session, odoo_url, sap_url, token):
     """Memvalidasi pembuatan PO, penerimaan kargo, dan webhook Goods Receipt."""
     ...
+
 
 def run_e2e_outbound_flow(session, odoo_url, sap_url, token):
     """Memvalidasi pembuatan DO, penugasan armada, POD, dan webhook Goods Issue."""

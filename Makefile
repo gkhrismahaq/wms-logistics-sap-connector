@@ -64,7 +64,14 @@ addon: wait-db
 	$(call upgrade_addon,$(word 2,$(MAKECMDGOALS)))
 	$(DOCKER_COMPOSE) restart odoo
 
-.PHONY: help start stop restart wait-db console psql logs odoo logs db addon
+e2e:
+	@if [ -f .venv/bin/python ]; then \
+		.venv/bin/python scripts/verify_e2e_integration.py; \
+	else \
+		python3 scripts/verify_e2e_integration.py; \
+	fi
+
+.PHONY: help start stop restart wait-db console psql logs odoo logs db addon e2e
 
 # Catch-all rule to prevent make from failing on arguments passed to targets like 'addon'
 %:

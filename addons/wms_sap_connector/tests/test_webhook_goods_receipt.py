@@ -43,16 +43,27 @@ class TestWebhookGoodsReceipt(TransactionCase):
                 }
             )
 
-        cls.product = cls.env["product.product"].search(
-            [("sap_material_code", "=", "MAT-KOPI-01")], limit=1
+        tmpl = (
+            cls.env["product.template"]
+            .sudo()
+            .with_context(active_test=False)
+            .search([("sap_material_code", "=", "MAT-KOPI-01")], limit=1)
         )
-        if not cls.product:
-            cls.product = cls.env["product.product"].create(
-                {
-                    "name": "Kopi Kapal Api Special Mix",
-                    "sap_material_code": "MAT-KOPI-01",
-                    "type": "product",
-                }
+        if tmpl:
+            tmpl.active = True
+            tmpl.with_context(active_test=False).product_variant_ids.write({"active": True})
+            cls.product = tmpl.product_variant_id
+        else:
+            cls.product = (
+                cls.env["product.product"]
+                .sudo()
+                .create(
+                    {
+                        "name": "Kopi Kapal Api Special Mix",
+                        "sap_material_code": "MAT-KOPI-01",
+                        "type": "product",
+                    }
+                )
             )
 
     def _create_assigned_picking(self, doc_num):
@@ -71,7 +82,7 @@ class TestWebhookGoodsReceipt(TransactionCase):
 
     @patch("requests.post")
     def test_01_webhook_goods_receipt_success(self, mock_post):
-        """REQ-WHK-01: Successful validation automatically triggers webhook and logs accounting journal."""
+        """Test successful validation automatically triggers webhook and logs accounting journal."""
         doc_num = f"PO-TEST-WHK-OK-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_assigned_picking(doc_num)
 
@@ -121,11 +132,11 @@ class TestWebhookGoodsReceipt(TransactionCase):
         )
         self.assertTrue(log)
         self.assertEqual(log.status, SYNC_STATUS_SUCCESS)
-        self.assertIn("JE-SAP-2026-8801", log.payload)
+        self.assertIn("JE-SAP-2026-8801", log.response_payload or log.payload)
 
     @patch("requests.post")
     def test_02_webhook_goods_receipt_non_blocking_failure(self, mock_post):
-        """REQ-WHK-01 & REQ-WHK-02: Network failure marks failed without blocking picking validation."""
+        """Test network failure marks failed without blocking picking validation."""
         doc_num = f"PO-TEST-WHK-FAIL-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_assigned_picking(doc_num)
 
@@ -156,7 +167,7 @@ class TestWebhookGoodsReceipt(TransactionCase):
 
     @patch("requests.post")
     def test_03_webhook_manual_retry(self, mock_post):
-        """REQ-WHK-02: Manual retry button resends webhook and updates sync status."""
+        """Test manual retry button resends webhook and updates sync status."""
         doc_num = f"PO-TEST-WHK-RETRY-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_assigned_picking(doc_num)
 

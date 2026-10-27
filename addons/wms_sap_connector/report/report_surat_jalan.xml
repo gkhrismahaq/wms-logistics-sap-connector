@@ -10,6 +10,7 @@
         <field name="print_report_name">'Surat_Jalan_%s' % (object.name.replace('/', '_'))</field>
         <field name="binding_model_id" ref="stock.model_stock_picking"/>
         <field name="binding_type">report</field>
+        <field name="groups_id" eval="[(4, ref('wms_sap_connector.group_wms_dispatcher')), (4, ref('wms_sap_connector.group_wms_manager'))]"/>
     </record>
 
     <!-- Main Report Template Wrapper -->
@@ -31,7 +32,7 @@
                     <div class="col-7">
                         <h3 class="fw-bold mb-1 text-uppercase text-dark">Surat Jalan Pengantaran Barang</h3>
                         <p class="text-muted mb-0 small">Official Delivery Slip &amp; Cargo Handover Document</p>
-                        <p class="mb-0 mt-1"><strong>Facility:</strong> Distribution Center Lowokwaru (DC LOW)</p>
+                        <p class="mb-0 mt-1"><strong>Facility:</strong> <span t-esc="o.picking_type_id.warehouse_id.name or o.location_id.warehouse_id.name or o.company_id.name"/><t t-if="o.picking_type_id.warehouse_id.code"> (<span t-field="o.picking_type_id.warehouse_id.code"/>)</t></p>
                     </div>
                     <div class="col-5 text-end">
                         <div class="d-inline-block text-center">
@@ -154,7 +155,7 @@
                                         <div t-if="move.description_picking and move.description_picking != move.product_id.name" class="text-muted small" t-field="move.description_picking"/>
                                     </td>
                                     <td class="text-end fw-bold">
-                                        <span t-field="move.product_uom_qty" t-options="{'widget': 'float', 'precision': 2}"/>
+                                        <span t-esc="move.quantity if o.state == 'done' else move.product_uom_qty" t-options="{'widget': 'float', 'precision': 2}"/>
                                     </td>
                                     <td class="text-center">
                                         <span t-field="move.product_uom.name"/>
@@ -211,7 +212,7 @@
                 <!-- Footer Footnote -->
                 <div class="row mt-4 pt-2 border-top">
                     <div class="col-12 text-center text-muted" style="font-size: 10px;">
-                        <em>Dokumen fisik resmi ini sah sebagai bukti serah terima kargo dari DC Lowokwaru. Mohon simpan lembar asli untuk arsip penerima toko.</em>
+                        <em>Dokumen fisik resmi ini sah sebagai bukti serah terima kargo dari <span t-esc="o.picking_type_id.warehouse_id.name or o.company_id.name"/>. Mohon simpan lembar asli untuk arsip penerima toko.</em>
                     </div>
                 </div>
             </div>

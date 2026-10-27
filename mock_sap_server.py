@@ -6,21 +6,21 @@ and webhooks for two-tier Odoo WMS integration and end-to-end testing.
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
 import random
 import threading
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any
 
 import requests
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-# ---------------------------------------------------------------------------
-# Configuration & Logging
-# ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -31,11 +31,9 @@ DEFAULT_SAP_TOKEN = "secret_sap_token_123"
 DEFAULT_ODOO_URL = os.getenv("ODOO_BASE_URL", "http://localhost:8070")
 SAP_API_TOKEN = os.getenv("SAP_API_TOKEN", DEFAULT_SAP_TOKEN)
 
-# ---------------------------------------------------------------------------
-# In-Memory Transaction History Store (Thread-Safe)
-# ---------------------------------------------------------------------------
+MAX_HISTORY_ENTRIES = 500
 _history_lock = threading.Lock()
-_transaction_history: list[dict[str, Any]] = []
+_transaction_history: deque[dict[str, Any]] = deque(maxlen=MAX_HISTORY_ENTRIES)
 
 
 def record_history(
@@ -75,9 +73,6 @@ def clear_history_records() -> None:
     logger.info("Transaction history cleared.")
 
 
-# ---------------------------------------------------------------------------
-# SAP Accounting Journal Simulation Engine
-# ---------------------------------------------------------------------------
 def generate_accounting_log(
     webhook_type: str,
     sap_doc_number: str,
@@ -111,9 +106,6 @@ def generate_accounting_log(
     }
 
 
-# ---------------------------------------------------------------------------
-# Pydantic Schemas
-# ---------------------------------------------------------------------------
 class HealthResponse(BaseModel):
     status: str = "ok"
     service: str = "Mock SAP Service"
@@ -212,9 +204,6 @@ class HistoryResponse(BaseModel):
     history: list[dict[str, Any]]
 
 
-# ---------------------------------------------------------------------------
-# Security & Authentication Dependency
-# ---------------------------------------------------------------------------
 def verify_sap_token(
     x_odoo_api_key: str | None = Header(None, alias="X-Odoo-API-Key"),
     authorization: str | None = Header(None, alias="Authorization"),
@@ -235,7 +224,7 @@ def verify_sap_token(
             token = auth_str
 
     expected_token = os.getenv("SAP_API_TOKEN", SAP_API_TOKEN)
-    if not token or token != expected_token:
+    if not token or not hmac.compare_digest(token, expected_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
@@ -247,9 +236,6 @@ def verify_sap_token(
     return token
 
 
-# ---------------------------------------------------------------------------
-# FastAPI Application Definition
-# ---------------------------------------------------------------------------
 tags_metadata = [
     {
         "name": "General",
@@ -297,9 +283,25 @@ async def http_exception_handler(_request: Request, exc: HTTPException) -> JSONR
     )
 
 
-# ---------------------------------------------------------------------------
-# Routes: General / Healthcheck
-# ---------------------------------------------------------------------------
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    _request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Ensures Pydantic schema validation errors adhere strictly to the 400 error contract."""
+    errors = exc.errors()
+    first_error = errors[0] if errors else {}
+    loc = " -> ".join(str(elem) for elem in first_error.get("loc", []))
+    msg = first_error.get("msg", "Invalid request payload")
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "status": "ERROR",
+            "code": 400,
+            "message": f"Validation Error at {loc}: {msg}",
+        },
+    )
+
+
 @app.get(
     "/",
     response_model=HealthResponse,
@@ -322,9 +324,6 @@ def health_endpoint() -> HealthResponse:
     return HealthResponse()
 
 
-# ---------------------------------------------------------------------------
-# Routes: Webhook Receivers (Odoo -> SAP)
-# ---------------------------------------------------------------------------
 @app.post(
     "/api/sap/goods-receipt",
     response_model=WebhookResponse,
@@ -403,9 +402,6 @@ def receive_goods_issue(
     return resp
 
 
-# ---------------------------------------------------------------------------
-# Routes: Triggers (SAP -> Odoo)
-# ---------------------------------------------------------------------------
 def _dispatch_to_odoo(endpoint_path: str, payload_data: dict[str, Any]) -> JSONResponse:
     """Helper to forward HTTP POST requests to the configured Odoo instance."""
     base_url = os.getenv("ODOO_BASE_URL", DEFAULT_ODOO_URL).rstrip("/")
@@ -507,9 +503,6 @@ def trigger_outbound_delivery(
     return _dispatch_to_odoo("/api/sap/outbound/delivery", payload.model_dump())
 
 
-# ---------------------------------------------------------------------------
-# Routes: History & Audit
-# ---------------------------------------------------------------------------
 @app.get(
     "/api/sap/history",
     response_model=HistoryResponse,
@@ -551,9 +544,6 @@ def delete_history(
     }
 
 
-# ---------------------------------------------------------------------------
-# CLI Entrypoint
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
 

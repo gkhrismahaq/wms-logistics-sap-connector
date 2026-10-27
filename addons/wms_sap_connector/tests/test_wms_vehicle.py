@@ -1,7 +1,7 @@
 """Test suite for WMS Vehicle Model and Security Access Control.
 
-Validates REQ-FLT-01 (wms.vehicle attributes, unique constraint, non-negative capacity)
-and REQ-FLT-02 (role-based access control for Dispatcher, Manager, and Operator).
+Validates wms.vehicle attributes, unique constraint, non-negative capacity,
+and role-based access control for Dispatcher, Manager, and Operator.
 """
 
 import uuid
@@ -63,7 +63,7 @@ class TestWmsVehicle(TransactionCase):
         )
 
     def test_01_create_vehicle_happy_path(self):
-        """REQ-FLT-01: Successfully create vehicle with valid attributes."""
+        """Test successfully create vehicle with valid attributes."""
         plate = f"B {uuid.uuid4().hex[:4].upper()} WMS"
         vehicle = self.env["wms.vehicle"].create(
             {
@@ -90,7 +90,7 @@ class TestWmsVehicle(TransactionCase):
         self.assertEqual(vehicle.state, VEHICLE_STATE_MAINTENANCE)
 
     def test_02_duplicate_license_plate_constraint(self):
-        """REQ-FLT-01: Duplicate license plate must be rejected by SQL unique constraint."""
+        """Test duplicate license plate must be rejected by SQL unique constraint."""
         plate = f"B {uuid.uuid4().hex[:4].upper()} UNQ"
         self.env["wms.vehicle"].create(
             {
@@ -114,7 +114,7 @@ class TestWmsVehicle(TransactionCase):
             )
 
     def test_03_capacity_validation_negative_values(self):
-        """REQ-FLT-01: Negative capacity for weight or volume must raise ValidationError."""
+        """Test negative capacity for weight or volume must raise ValidationError."""
         # Negative weight
         with self.assertRaises(ValidationError):
             self.env["wms.vehicle"].create(
@@ -136,7 +136,7 @@ class TestWmsVehicle(TransactionCase):
             )
 
     def test_04_security_vehicle_access_rights(self):
-        """REQ-FLT-02: Dispatcher & Manager have full CRUD, Operator is read-only."""
+        """Test Dispatcher & Manager have full CRUD, Operator is read-only."""
         plate_disp = f"B {uuid.uuid4().hex[:4].upper()} DSP"
 
         # 1. Dispatcher can CREATE, WRITE, READ, UNLINK

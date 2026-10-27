@@ -34,24 +34,44 @@ class TestWebhookGoodsIssue(TransactionCase):
             CONFIG_PARAM_SAP_API_TOKEN, "secret_sap_token_gi_123"
         )
 
-        cls.customer = cls.env["res.partner"].create(
-            {
-                "name": "PT Sumber Alfaria Trijaya",
-                "sap_partner_code": "CUST-ALFAMART-01",
-                "customer_rank": 1,
-            }
+        cls.customer = (
+            cls.env["res.partner"]
+            .sudo()
+            .with_context(active_test=False)
+            .search([("sap_partner_code", "=", "CUST-ALFAMART-01")], limit=1)
         )
-
-        cls.product = cls.env["product.product"].search(
-            [("sap_material_code", "=", "MAT-KOPI-01")], limit=1
-        )
-        if not cls.product:
-            cls.product = cls.env["product.product"].create(
+        if not cls.customer:
+            cls.customer = cls.env["res.partner"].create(
                 {
-                    "name": "Kopi Kapal Api Special Mix",
-                    "sap_material_code": "MAT-KOPI-01",
-                    "type": "product",
+                    "name": "PT Sumber Alfaria Trijaya",
+                    "sap_partner_code": "CUST-ALFAMART-01",
+                    "customer_rank": 1,
                 }
+            )
+        else:
+            cls.customer.active = True
+
+        tmpl = (
+            cls.env["product.template"]
+            .sudo()
+            .with_context(active_test=False)
+            .search([("sap_material_code", "=", "MAT-KOPI-01")], limit=1)
+        )
+        if tmpl:
+            tmpl.active = True
+            tmpl.with_context(active_test=False).product_variant_ids.write({"active": True})
+            cls.product = tmpl.product_variant_id
+        else:
+            cls.product = (
+                cls.env["product.product"]
+                .sudo()
+                .create(
+                    {
+                        "name": "Kopi Kapal Api Special Mix",
+                        "sap_material_code": "MAT-KOPI-01",
+                        "type": "product",
+                    }
+                )
             )
 
         cls.picking_type_out = cls.env["stock.picking.type"].search(
@@ -109,7 +129,7 @@ class TestWebhookGoodsIssue(TransactionCase):
 
     @patch("requests.post")
     def test_01_webhook_goods_issue_success(self, mock_post):
-        """REQ-POD-03: Validation of outgoing picking with POD triggers Goods Issue webhook and logs accounting."""
+        """Test validation of outgoing picking with POD triggers Goods Issue webhook and logs accounting."""
         doc_num = f"SO-GI-OK-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_outgoing_picking(doc_num, with_pod=True)
         self.assertTrue(picking.has_pod)
@@ -161,11 +181,11 @@ class TestWebhookGoodsIssue(TransactionCase):
         )
         self.assertTrue(log)
         self.assertEqual(log.status, SYNC_STATUS_SUCCESS)
-        self.assertIn("JE-SAP-2026-9902", log.payload)
+        self.assertIn("JE-SAP-2026-9902", log.response_payload or log.payload)
 
     @patch("requests.post")
     def test_02_validation_without_pod_does_not_trigger_webhook(self, mock_post):
-        """REQ-POD-03: Validation of outgoing picking without POD MUST NOT trigger webhook."""
+        """Test validation of outgoing picking without POD must not trigger webhook."""
         doc_num = f"SO-GI-NOPOD-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_outgoing_picking(doc_num, with_pod=False)
         self.assertFalse(picking.has_pod)
@@ -178,7 +198,7 @@ class TestWebhookGoodsIssue(TransactionCase):
 
     @patch("requests.post")
     def test_03_late_pod_upload_triggers_webhook_on_done_picking(self, mock_post):
-        """REQ-POD-03: Uploading POD to an already-done picking triggers Goods Issue webhook automatically."""
+        """Test uploading POD to an already-done picking triggers Goods Issue webhook automatically."""
         doc_num = f"SO-GI-LATE-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_outgoing_picking(doc_num, with_pod=False)
         picking.button_validate()
@@ -213,7 +233,7 @@ class TestWebhookGoodsIssue(TransactionCase):
 
     @patch("requests.post")
     def test_04_webhook_goods_issue_non_blocking_failure(self, mock_post):
-        """REQ-POD-03: Connection failure marks status failed without blocking physical completion."""
+        """Test connection failure marks status failed without blocking physical completion."""
         doc_num = f"SO-GI-FAIL-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_outgoing_picking(doc_num, with_pod=True)
 
@@ -241,7 +261,7 @@ class TestWebhookGoodsIssue(TransactionCase):
 
     @patch("requests.post")
     def test_05_manual_retry_button_goods_issue(self, mock_post):
-        """REQ-POD-03: action_send_sap_goods_issue_webhook allows manual retry and updates status."""
+        """Test action_send_sap_goods_issue_webhook allows manual retry and updates status."""
         doc_num = f"SO-GI-RETRY-{uuid.uuid4().hex[:6].upper()}"
         picking = self._create_outgoing_picking(doc_num, with_pod=True)
 
@@ -269,7 +289,7 @@ class TestWebhookGoodsIssue(TransactionCase):
         self.assertEqual(picking.sap_sync_status, SYNC_STATUS_SYNCED)
 
     def test_06_missing_sap_base_url_handling(self):
-        """REQ-POD-03: When SAP Base URL is not configured, webhook marks failed cleanly with log entry."""
+        """Test when SAP Base URL is not configured, webhook marks failed cleanly with log entry."""
         self.env["ir.config_parameter"].sudo().set_param(
             CONFIG_PARAM_SAP_BASE_URL, False
         )

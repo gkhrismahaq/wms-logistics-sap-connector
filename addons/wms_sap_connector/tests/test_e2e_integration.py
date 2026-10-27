@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 from odoo import fields
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError
 from odoo.tests.common import TransactionCase, tagged
 
 from ..constants import (
@@ -38,9 +38,7 @@ from ..constants import (
     VEHICLE_STATE_AVAILABLE,
 )
 
-DUMMY_PNG_BASE64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-)
+DUMMY_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 
 
 @tagged("post_install", "-at_install", "wms_sap", "e2e")
@@ -69,7 +67,9 @@ class TestE2EIntegration(TransactionCase):
                 "name": "Operator E2E",
                 "login": f"op_e2e_{uuid.uuid4().hex[:6]}",
                 "email": "op_e2e@example.com",
-                "groups_id": [(6, 0, [cls.group_operator.id, cls.env.ref("base.group_user").id])],
+                "groups_id": [
+                    (6, 0, [cls.group_operator.id, cls.env.ref("base.group_user").id])
+                ],
             }
         )
         cls.user_dispatcher = cls.env["res.users"].create(
@@ -77,7 +77,9 @@ class TestE2EIntegration(TransactionCase):
                 "name": "Dispatcher E2E",
                 "login": f"disp_e2e_{uuid.uuid4().hex[:6]}",
                 "email": "disp_e2e@example.com",
-                "groups_id": [(6, 0, [cls.group_dispatcher.id, cls.env.ref("base.group_user").id])],
+                "groups_id": [
+                    (6, 0, [cls.group_dispatcher.id, cls.env.ref("base.group_user").id])
+                ],
             }
         )
         cls.user_manager = cls.env["res.users"].create(
@@ -85,7 +87,9 @@ class TestE2EIntegration(TransactionCase):
                 "name": "Manager E2E",
                 "login": f"mgr_e2e_{uuid.uuid4().hex[:6]}",
                 "email": "mgr_e2e@example.com",
-                "groups_id": [(6, 0, [cls.group_manager.id, cls.env.ref("base.group_user").id])],
+                "groups_id": [
+                    (6, 0, [cls.group_manager.id, cls.env.ref("base.group_user").id])
+                ],
             }
         )
 
@@ -169,15 +173,19 @@ class TestE2EIntegration(TransactionCase):
 
         # Log to sap.sync.log
         sync_ref_prod = f"SYNC-{REF_PREFIX_MASTER_DATA}-{uuid.uuid4().hex[:6].upper()}"
-        log_prod = self.env["sap.sync.log"].sudo().create(
-            {
-                "name": sync_ref_prod,
-                "sync_type": SYNC_TYPE_MASTER_PRODUCT,
-                "direction": DIRECTION_INBOUND,
-                "payload": json.dumps(prod_payload),
-                "status": SYNC_STATUS_SUCCESS,
-                "sync_date": fields.Datetime.now(),
-            }
+        log_prod = (
+            self.env["sap.sync.log"]
+            .sudo()
+            .create(
+                {
+                    "name": sync_ref_prod,
+                    "sync_type": SYNC_TYPE_MASTER_PRODUCT,
+                    "direction": DIRECTION_INBOUND,
+                    "payload": json.dumps(prod_payload),
+                    "status": SYNC_STATUS_SUCCESS,
+                    "sync_date": fields.Datetime.now(),
+                }
+            )
         )
         self.assertEqual(log_prod.status, SYNC_STATUS_SUCCESS)
 
@@ -200,22 +208,26 @@ class TestE2EIntegration(TransactionCase):
         self.assertEqual(vendor.sap_partner_code, vend_code)
         self.assertEqual(customer.sap_partner_code, cust_code)
 
-        log_partner = self.env["sap.sync.log"].sudo().create(
-            {
-                "name": f"SYNC-{REF_PREFIX_MASTER_DATA}-{uuid.uuid4().hex[:6].upper()}",
-                "sync_type": SYNC_TYPE_MASTER_PARTNER,
-                "direction": DIRECTION_INBOUND,
-                "payload": json.dumps({"vendor": vend_code, "customer": cust_code}),
-                "status": SYNC_STATUS_SUCCESS,
-                "sync_date": fields.Datetime.now(),
-            }
+        log_partner = (
+            self.env["sap.sync.log"]
+            .sudo()
+            .create(
+                {
+                    "name": f"SYNC-{REF_PREFIX_MASTER_DATA}-{uuid.uuid4().hex[:6].upper()}",
+                    "sync_type": SYNC_TYPE_MASTER_PARTNER,
+                    "direction": DIRECTION_INBOUND,
+                    "payload": json.dumps({"vendor": vend_code, "customer": cust_code}),
+                    "status": SYNC_STATUS_SUCCESS,
+                    "sync_date": fields.Datetime.now(),
+                }
+            )
         )
         self.assertEqual(log_partner.direction, DIRECTION_INBOUND)
 
     # -------------------------------------------------------------------------
     # Skenario 2: Alur Inbound PO, Putaway, dan Webhook Goods Receipt
     # -------------------------------------------------------------------------
-    @patch("odoo.addons.wms_sap_connector.models.stock_picking.requests.post")
+    @patch("odoo.addons.wms_sap_connector.services.sap_webhook_service.requests.post")
     def test_02_e2e_inbound_po_putaway_and_goods_receipt_webhook(self, mock_post):
         """Verifies Inbound PO creation, Putaway Rule execution, and Goods Receipt webhook acknowledgement."""
         sap_doc = self._generate_unique_ref("PO-SAP")
@@ -310,7 +322,7 @@ class TestE2EIntegration(TransactionCase):
     # -------------------------------------------------------------------------
     # Skenario 3: Alur Outbound Delivery, Armada, POD, dan Webhook Goods Issue
     # -------------------------------------------------------------------------
-    @patch("odoo.addons.wms_sap_connector.models.stock_picking.requests.post")
+    @patch("odoo.addons.wms_sap_connector.services.sap_webhook_service.requests.post")
     def test_03_e2e_outbound_delivery_dispatch_pod_and_goods_issue_webhook(
         self, mock_post
     ):
@@ -448,7 +460,7 @@ class TestE2EIntegration(TransactionCase):
     # -------------------------------------------------------------------------
     # Skenario 4: Ketahanan Gangguan Jaringan & Pengiriman Ulang Manual (Retry)
     # -------------------------------------------------------------------------
-    @patch("odoo.addons.wms_sap_connector.models.stock_picking.requests.post")
+    @patch("odoo.addons.wms_sap_connector.services.sap_webhook_service.requests.post")
     def test_04_e2e_network_failure_resilience_and_manual_retry(self, mock_post):
         """Verifies warehouse physical movements remain done during SAP outages and manual retry succeeds."""
         sap_doc = self._generate_unique_ref("PO-FAIL")
@@ -466,13 +478,19 @@ class TestE2EIntegration(TransactionCase):
             }
         )
 
-        picking, _is_created = self.env["stock.picking"].sudo().create_inbound_from_sap(
-            {
-                "sap_doc_number": sap_doc,
-                "vendor_code": vend_code,
-                "expected_date": "2026-10-28",
-                "items": [{"sap_material_code": mat_code, "qty": 10.0, "uom": "Unit"}],
-            }
+        picking, _is_created = (
+            self.env["stock.picking"]
+            .sudo()
+            .create_inbound_from_sap(
+                {
+                    "sap_doc_number": sap_doc,
+                    "vendor_code": vend_code,
+                    "expected_date": "2026-10-28",
+                    "items": [
+                        {"sap_material_code": mat_code, "qty": 10.0, "uom": "Unit"}
+                    ],
+                }
+            )
         )
 
         # Simulate SAP connection failure
@@ -518,23 +536,99 @@ class TestE2EIntegration(TransactionCase):
                 }
             )
 
-        # 2. Logistics Dispatcher can manage vehicle fleet
-        disp_veh = self.env["wms.vehicle"].with_user(self.user_dispatcher).create(
+        # 2. Warehouse Operator cannot read or write sap.sync.log
+        with self.assertRaises(AccessError):
+            self.env["sap.sync.log"].with_user(self.user_operator).search([])
+
+        # 3. Create test picking records for deletion and assignment tests
+        picking_type_out = self.picking_type_out or self.env["stock.picking.type"].search(
+            [("code", "=", PICKING_TYPE_CODE_OUTGOING)], limit=1
+        )
+        loc_src = (
+            picking_type_out.default_location_src_id
+            or self.env.ref("stock.stock_location_stock")
+        )
+        loc_dest = (
+            picking_type_out.default_location_dest_id
+            or self.env.ref("stock.stock_location_customers")
+        )
+        sap_doc_code = f"AUDIT-SAP-{uuid.uuid4().hex[:6]}"
+        picking_sap = self.env["stock.picking"].create(
             {
-                "license_plate": f"D {uuid.uuid4().hex[:4].upper()} ABC",
-                "max_weight": 1500.0,
-                "max_volume": 8.0,
+                "picking_type_id": picking_type_out.id,
+                "location_id": loc_src.id,
+                "location_dest_id": loc_dest.id,
+                "sap_doc_number": sap_doc_code,
             }
+        )
+        picking_manual = self.env["stock.picking"].create(
+            {
+                "picking_type_id": picking_type_out.id,
+                "location_id": loc_src.id,
+                "location_dest_id": loc_dest.id,
+            }
+        )
+
+        # 4. Operator cannot delete stock.picking
+        with self.assertRaises(AccessError):
+            picking_manual.with_user(self.user_operator).unlink()
+
+        # 5. Logistics Dispatcher can manage vehicle fleet
+        disp_veh = (
+            self.env["wms.vehicle"]
+            .with_user(self.user_dispatcher)
+            .create(
+                {
+                    "license_plate": f"D {uuid.uuid4().hex[:4].upper()} ABC",
+                    "max_weight": 1500.0,
+                    "max_volume": 8.0,
+                }
+            )
         )
         self.assertTrue(disp_veh.exists())
 
-        # 3. Warehouse Manager has full administrative control
-        mgr_veh = self.env["wms.vehicle"].with_user(self.user_manager).create(
+        # 6. Logistics Dispatcher can assign fleet on picking, but Operator cannot
+        with self.assertRaises(AccessError):
+            picking_manual.with_user(self.user_operator).write({"vehicle_id": disp_veh.id})
+
+        picking_manual.with_user(self.user_dispatcher).write({"vehicle_id": disp_veh.id})
+        self.assertEqual(picking_manual.vehicle_id.id, disp_veh.id)
+
+        # 7. Logistics Dispatcher cannot delete stock.picking
+        with self.assertRaises(AccessError):
+            picking_manual.with_user(self.user_dispatcher).unlink()
+
+        # 8. Dispatcher cannot trigger retry on sap.sync.log
+        dummy_log = self.env["sap.sync.log"].create(
             {
-                "license_plate": f"L {uuid.uuid4().hex[:4].upper()} MGR",
-                "max_weight": 3000.0,
-                "max_volume": 15.0,
+                "name": f"LOG-AUDIT-{uuid.uuid4().hex[:6]}",
+                "sync_type": SYNC_TYPE_INBOUND_PO,
+                "direction": DIRECTION_INBOUND,
+                "status": SYNC_STATUS_FAILED,
+                "payload": "{}",
             }
+        )
+        with self.assertRaises(AccessError):
+            dummy_log.with_user(self.user_dispatcher).action_retry_sync()
+
+        # 9. Picking with sap_doc_number cannot be deleted even by Manager
+        with self.assertRaises(UserError):
+            picking_sap.with_user(self.user_manager).unlink()
+
+        # 10. Warehouse Manager has full administrative control
+        mgr_veh = (
+            self.env["wms.vehicle"]
+            .with_user(self.user_manager)
+            .create(
+                {
+                    "license_plate": f"L {uuid.uuid4().hex[:4].upper()} MGR",
+                    "max_weight": 3000.0,
+                    "max_volume": 15.0,
+                }
+            )
         )
         self.assertTrue(mgr_veh.exists())
         mgr_veh.unlink()
+
+        # Manager can delete manual picking without sap_doc_number
+        self.assertTrue(picking_manual.with_user(self.user_manager).unlink())

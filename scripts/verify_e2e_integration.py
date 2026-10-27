@@ -20,9 +20,7 @@ ODOO_URL = os.getenv("ODOO_BASE_URL", "http://localhost:8070").rstrip("/")
 SAP_URL = os.getenv("SAP_BASE_URL", "http://localhost:8000").rstrip("/")
 SAP_TOKEN = os.getenv("SAP_API_TOKEN", "secret_sap_token_123")
 
-DUMMY_IMAGE_BASE64 = (
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-)
+DUMMY_IMAGE_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 
 
 def log_step(step_num: int, title: str) -> None:
@@ -73,7 +71,9 @@ def check_preflight(session: requests.Session) -> bool:
     return True
 
 
-def test_step_1_master_data(session: requests.Session, unique_id: str) -> dict[str, str]:
+def test_step_1_master_data(
+    session: requests.Session, unique_id: str
+) -> dict[str, str]:
     """Tests master data sync (Product with Base64 image and Partners)."""
     log_step(1, "Master Data Synchronization (Product & Partners)")
 
@@ -109,7 +109,9 @@ def test_step_1_master_data(session: requests.Session, unique_id: str) -> dict[s
     assert res_prod.status_code == 200, f"Product sync failed: {res_prod.text}"
     prod_data = res_prod.json()
     assert prod_data.get("status") == "SUCCESS", f"Expected SUCCESS, got: {prod_data}"
-    log_success(f"Product Material synced: {mat_code} (Processed: {prod_data.get('processed_count')})")
+    log_success(
+        f"Product Material synced: {mat_code} (Processed: {prod_data.get('processed_count')})"
+    )
 
     # 2. Partner Master (Vendor & Customer)
     headers_bearer = {
@@ -185,7 +187,9 @@ def test_step_2_inbound_po(
     data = res.json()
     assert data.get("status") == "SUCCESS", f"Expected SUCCESS, got: {data}"
     picking_id = data.get("odoo_picking_id")
-    log_success(f"Stock Receipt generated: Picking ID #{picking_id} for SAP Doc {sap_po_num}")
+    log_success(
+        f"Stock Receipt generated: Picking ID #{picking_id} for SAP Doc {sap_po_num}"
+    )
     return sap_po_num
 
 
@@ -313,7 +317,9 @@ def test_step_6_mock_sap_audit_history(session: requests.Session) -> None:
     assert data.get("status") == "SUCCESS"
     count = data.get("count", 0)
     assert count >= 2, f"Expected at least 2 recorded transactions, got {count}"
-    log_success(f"Audit log verified: {count} transactions successfully logged in Mock SAP")
+    log_success(
+        f"Audit log verified: {count} transactions successfully logged in Mock SAP"
+    )
 
 
 def main() -> int:

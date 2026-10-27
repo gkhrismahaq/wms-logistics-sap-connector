@@ -1,3 +1,6 @@
+import uuid
+
+from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase, tagged
 
 from ..constants import (
@@ -110,6 +113,10 @@ class TestReportSuratJalan(TransactionCase):
         )
         self.assertEqual(self.report_action.binding_model_id.model, "stock.picking")
         self.assertEqual(self.report_action.binding_type, "report")
+        group_disp = self.env.ref("wms_sap_connector.group_wms_dispatcher")
+        group_mgr = self.env.ref("wms_sap_connector.group_wms_manager")
+        self.assertIn(group_disp, self.report_action.groups_id)
+        self.assertIn(group_mgr, self.report_action.groups_id)
 
     def test_02_report_rendering_happy_path(self):
         """Surat Jalan report rendering with full vehicle, driver, and cargo lines."""
@@ -216,3 +223,58 @@ class TestReportSuratJalan(TransactionCase):
         self.assertTrue(isinstance(pdf_bytes, bytes))
         self.assertGreater(len(pdf_bytes), 2000)
         self.assertEqual(pdf_bytes[:4], b"%PDF")
+
+    def test_05_report_security_role_based_access_control(self):
+        """Surat Jalan report access is restricted to Dispatchers and Managers; Operators are blocked."""
+        group_op = self.env.ref("wms_sap_connector.group_wms_operator")
+        group_disp = self.env.ref("wms_sap_connector.group_wms_dispatcher")
+        group_mgr = self.env.ref("wms_sap_connector.group_wms_manager")
+
+        uid_suffix = uuid.uuid4().hex[:6]
+        user_operator = self.env["res.users"].create(
+            {
+                "name": f"Operator Report Test {uid_suffix}",
+                "login": f"op_rep_{uid_suffix}@example.com",
+                "groups_id": [(6, 0, [group_op.id])],
+            }
+        )
+        user_dispatcher = self.env["res.users"].create(
+            {
+                "name": f"Dispatcher Report Test {uid_suffix}",
+                "login": f"disp_rep_{uid_suffix}@example.com",
+                "groups_id": [(6, 0, [group_disp.id])],
+            }
+        )
+        user_manager = self.env["res.users"].create(
+            {
+                "name": f"Manager Report Test {uid_suffix}",
+                "login": f"mgr_rep_{uid_suffix}@example.com",
+                "groups_id": [(6, 0, [group_mgr.id])],
+            }
+        )
+
+        picking = self._create_outgoing_picking(
+            items=[(self.product_kopi, 1.0)],
+            vehicle=self.vehicle,
+            driver=self.driver,
+            sap_doc_number=f"SO-SJ-SEC-{uid_suffix}",
+        )
+
+        # 1. Operator is blocked from rendering Surat Jalan
+        with self.assertRaises(AccessError):
+            self.report_action.with_user(user_operator)._render_qweb_html(
+                self.report_action.id, [picking.id]
+            )
+
+        # 2. Dispatcher can render Surat Jalan
+        html_disp, _ = self.report_action.with_user(user_dispatcher)._render_qweb_html(
+            self.report_action.id, [picking.id]
+        )
+        self.assertTrue(len(html_disp) > 0)
+
+        # 3. Manager can render Surat Jalan
+        html_mgr, _ = self.report_action.with_user(user_manager)._render_qweb_html(
+            self.report_action.id, [picking.id]
+        )
+        self.assertTrue(len(html_mgr) > 0)
+

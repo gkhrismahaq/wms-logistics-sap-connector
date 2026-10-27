@@ -51,12 +51,17 @@ class TestOutboundDeliveryApi(HttpCase):
                 )
             )
 
-        cls.product_1 = (
-            cls.env["product.product"]
+        tmpl_1 = (
+            cls.env["product.template"]
             .sudo()
+            .with_context(active_test=False)
             .search([("sap_material_code", "=", "MAT-KOPI-01")], limit=1)
         )
-        if not cls.product_1:
+        if tmpl_1:
+            tmpl_1.active = True
+            tmpl_1.with_context(active_test=False).product_variant_ids.write({"active": True})
+            cls.product_1 = tmpl_1.product_variant_id
+        else:
             cls.product_1 = (
                 cls.env["product.product"]
                 .sudo()
@@ -69,12 +74,17 @@ class TestOutboundDeliveryApi(HttpCase):
                 )
             )
 
-        cls.product_2 = (
-            cls.env["product.product"]
+        tmpl_2 = (
+            cls.env["product.template"]
             .sudo()
+            .with_context(active_test=False)
             .search([("sap_material_code", "=", "MAT-TEH-02")], limit=1)
         )
-        if not cls.product_2:
+        if tmpl_2:
+            tmpl_2.active = True
+            tmpl_2.with_context(active_test=False).product_variant_ids.write({"active": True})
+            cls.product_2 = tmpl_2.product_variant_id
+        else:
             cls.product_2 = (
                 cls.env["product.product"]
                 .sudo()

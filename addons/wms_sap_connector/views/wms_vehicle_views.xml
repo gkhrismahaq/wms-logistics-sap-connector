@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Tree View for wms.vehicle -->
     <record id="view_wms_vehicle_tree" model="ir.ui.view">
         <field name="name">wms.vehicle.tree</field>
         <field name="model">wms.vehicle</field>
@@ -18,7 +17,6 @@
         </field>
     </record>
 
-    <!-- Form View for wms.vehicle -->
     <record id="view_wms_vehicle_form" model="ir.ui.view">
         <field name="name">wms.vehicle.form</field>
         <field name="model">wms.vehicle</field>
@@ -48,7 +46,6 @@
         </field>
     </record>
 
-    <!-- Search View for wms.vehicle -->
     <record id="view_wms_vehicle_search" model="ir.ui.view">
         <field name="name">wms.vehicle.search</field>
         <field name="model">wms.vehicle</field>
@@ -68,7 +65,6 @@
         </field>
     </record>
 
-    <!-- Window Action for wms.vehicle -->
     <record id="action_wms_vehicle" model="ir.actions.act_window">
         <field name="name">Fleet Vehicles</field>
         <field name="res_model">wms.vehicle</field>
@@ -84,7 +80,6 @@
         </field>
     </record>
 
-    <!-- Menus -->
     <menuitem id="menu_wms_logistics_root" name="Logistics &amp; Delivery"
               parent="stock.menu_stock_root" sequence="25"/>
     <menuitem id="menu_wms_vehicle" name="Fleet Vehicles"
